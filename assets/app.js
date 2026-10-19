@@ -5,6 +5,7 @@
   var CFG_KEY = "studio_cfg";
   var GEN_KEY = "studio_gens";
   var WF_KEY = "studio_workflows";
+  var CRED_KEY = "studio_credits";
   var API_BASE = "https://api.morphic.com/v1/partner";
 
   /* ---------- tiny helpers ---------- */
@@ -55,6 +56,118 @@
   }
   function persistWfs(wfs) { localStorage.setItem(WF_KEY, JSON.stringify(wfs)); }
 
+  /* ---------- media models + demo credits + profile ---------- */
+  var MEDIA_MODELS = {
+    video: [
+      { name: "Seedance 2.5", sub: "Long takes · native motion", cost: 3 },
+      { name: "Kling 3.0", sub: "Realistic physics", cost: 4 },
+      { name: "Veo 3.1", sub: "Cinematic realism", cost: 5 },
+      { name: "Hailuo 2.3", sub: "Stylised looks", cost: 4 },
+      { name: "MiniMax H3", sub: "Expressive characters", cost: 4 },
+      { name: "Wan 3.0", sub: "Open video model", cost: 3 },
+      { name: "Vidu Q3", sub: "Fast, vivid clips", cost: 3 },
+      { name: "LTX 2.5", sub: "Real-time speed", cost: 2 },
+      { name: "Grok Imagine", sub: "Bold, playful styles", cost: 2 },
+      { name: "Seedance 2.5 Draft", sub: "Quick previews", cost: 1 }
+    ],
+    image: [
+      { name: "Nano Banana Pro", sub: "Detailed, vivid images", cost: 3 },
+      { name: "GPT Image 2.5", sub: "Sharp, accurate renders", cost: 3 },
+      { name: "Ideogram 4.5", sub: "Type-safe graphics", cost: 2 },
+      { name: "Seedream 5.0 Pro", sub: "Photoreal detail", cost: 3 },
+      { name: "Flux 2 Pro", sub: "Pro-grade stills", cost: 2 },
+      { name: "Recraft V4.1", sub: "Design & illustration", cost: 2 },
+      { name: "Krea 3", sub: "Fast creative images", cost: 2 },
+      { name: "Qwen Image 2.1", sub: "Lightweight & quick", cost: 1 }
+    ],
+    audio: []
+  };
+  var selByTab = { video: "Seedance 2.5", image: "Nano Banana Pro" };
+  var CHECK_SVG = '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>';
+
+  function modelCost(name) {
+    var all = MEDIA_MODELS.video.concat(MEDIA_MODELS.image);
+    for (var i = 0; i < all.length; i++) if (all[i].name === name) return all[i].cost;
+    return 3;
+  }
+  function getCredits() {
+    var v = parseInt(localStorage.getItem(CRED_KEY), 10);
+    if (isNaN(v)) { v = 100; try { localStorage.setItem(CRED_KEY, String(v)); } catch (e) {} }
+    return v;
+  }
+  function setCredits(v) {
+    try { localStorage.setItem(CRED_KEY, String(Math.max(0, v))); } catch (e) {}
+    updateCreditBadge();
+    var bv = $("#credBalanceView");
+    if (bv) bv.textContent = "⚡" + getCredits();
+  }
+  function updateCreditBadge() {
+    var cb = $("#creditBadge");
+    if (cb) cb.textContent = isLive() ? "Live" : getCredits();
+  }
+  function loadProfile() {
+    var c = loadCfg();
+    return c.profile || { name: "", color: "#2b7fff" };
+  }
+  function updateAvatar() {
+    var p = loadProfile();
+    $all("#topAvatar").forEach(function (a) {
+      a.textContent = ((p.name || "A").charAt(0) || "A").toUpperCase();
+      a.style.background = p.color || "#2b7fff";
+    });
+  }
+  function maybeNotify(title, body) {
+    try {
+      var cfg = loadCfg();
+      if (cfg.notify && "Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body: String(body).slice(0, 120) });
+      }
+    } catch (e) {}
+  }
+
+  /* ---------- bundled demo videos (real clips, honest labels) ---------- */
+  var BUNDLED_DEMOS = [
+    { src: "assets/demos/demo1.mp4", title: "Golden-hour property showcase", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 2 * 864e5 },
+    { src: "assets/demos/demo2.mp4", title: "Lifestyle product clip", model: "Kling 2.0", type: "video", createdAt: Date.now() - 3 * 864e5 },
+    { src: "assets/demos/demo3.mp4", title: "Yogabars product ad — AI UGC", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 5 * 864e5 },
+    { src: "assets/demos/demo4.mp4", title: "Test render", model: "Kling 2.0", type: "video", createdAt: Date.now() - 6 * 864e5 }
+  ];
+  function demoVideoCard(d) {
+    return '<article class="gen-card demo-video-card">' +
+      '<div class="thumb"><video src="' + esc(d.src) + '" muted loop playsinline preload="metadata"></video>' +
+      '<span class="play">' + PLAY_SVG + "</span></div>" +
+      '<div class="gen-body"><p class="gen-prompt">' + esc(d.title) + "</p>" +
+      '<div class="gen-meta"><span class="badge done">Done</span> <span class="badge sample">Demo</span>' +
+      "<span>" + esc(d.model) + '</span><span class="dot-sep">•</span>' +
+      "<span>" + esc(timeAgo(d.createdAt)) + "</span>" +
+      "</div></div></article>";
+  }
+  function bindDemoVideos(root) {
+    $all(".demo-video-card", root || document).forEach(function (card) {
+      var vid = card.querySelector("video");
+      if (!vid) return;
+      card.addEventListener("click", function () {
+        var isPlaying = card.classList.contains("playing");
+        $all(".demo-video-card").forEach(function (c) {
+          c.classList.remove("playing");
+          var v = c.querySelector("video");
+          if (v && v !== vid) { try { v.pause(); } catch (e) {} }
+        });
+        if (!isPlaying) {
+          try {
+            var p = vid.play();
+            if (p && p.catch) p.catch(function () {});
+          } catch (e) {}
+          card.classList.add("playing");
+        } else {
+          try { vid.pause(); } catch (e) {}
+        }
+      });
+      vid.addEventListener("pause", function () { card.classList.remove("playing"); });
+      vid.addEventListener("play", function () { card.classList.add("playing"); });
+    });
+  }
+
   function isLive() {
     var c = loadCfg();
     return !c.demoMode && !!(c.apiKey && c.orgId && c.projectId && c.workflowId);
@@ -94,8 +207,8 @@
       pill.innerHTML = '<span class="mode-dot' + (live ? " live" : "") + '"></span>' +
         (live ? "Live API connected" : "Demo mode — connect API in Settings");
     }
-    var cb = $("#creditBadge");
-    if (cb) cb.textContent = live ? "Live" : "0";
+    updateCreditBadge();
+    updateAvatar();
   }
 
   /* ---------- thumbnails (pure CSS gradients) ---------- */
@@ -192,18 +305,192 @@
   function initGallery() {
     var gens = loadGens();
     var cfg = loadCfg();
-    var show = gens.length ? gens : (cfg.demoMode !== false ? sampleGens() : []);
-    var grid = $("#galleryGrid"), empty = $("#galleryEmpty");
-    if (show.length) {
-      empty.style.display = "none";
-      grid.innerHTML = show.map(genCard).join("");
-      bindCardActions(grid);
+    var all = gens.length ? gens : (cfg.demoMode !== false ? sampleGens() : []);
+    var view = null, filter = null;
+    try {
+      view = localStorage.getItem("studio_assets_view") || "grid";
+      filter = localStorage.getItem("studio_assets_filter") || "all";
+    } catch (e) { view = "grid"; filter = "all"; }
+    function apply() {
+      var grid = $("#galleryGrid"), empty = $("#galleryEmpty");
+      if (!grid) return;
+      var show = all.filter(function (g) { return filter === "all" || (g.type || "video") === filter; });
+      var demos = BUNDLED_DEMOS.filter(function (d) { return filter === "all" || d.type === filter; });
+      grid.classList.toggle("list", view === "list");
+      if (show.length || demos.length) {
+        empty.style.display = "none";
+        grid.innerHTML = show.map(genCard).join("") + demos.map(demoVideoCard).join("");
+        bindCardActions(grid);
+        bindDemoVideos(grid);
+      } else {
+        grid.innerHTML = "";
+        empty.style.display = "block";
+      }
+      $all("#assetChips .chip").forEach(function (c) {
+        c.classList.toggle("sel", c.getAttribute("data-f") === filter);
+      });
+      $all("#viewToggle .vt").forEach(function (b) {
+        b.classList.toggle("sel", b.getAttribute("data-v") === view);
+      });
       var note = $("#galleryNote");
-      if (note && !gens.length) note.style.display = "block";
-    } else {
-      grid.innerHTML = "";
-      empty.style.display = "block";
+      if (note) note.style.display = (!gens.length && all.length) ? "block" : "none";
     }
+    $all("#assetChips .chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        filter = c.getAttribute("data-f");
+        try { localStorage.setItem("studio_assets_filter", filter); } catch (e) {}
+        apply();
+      });
+    });
+    $all("#viewToggle .vt").forEach(function (b) {
+      b.addEventListener("click", function () {
+        view = b.getAttribute("data-v");
+        try { localStorage.setItem("studio_assets_view", view); } catch (e) {}
+        apply();
+      });
+    });
+    apply();
+  }
+
+  /* ---------- activity page ---------- */
+  function initActivity() {
+    var gens = loadGens();
+    var list = $("#actList"), empty = $("#actEmpty");
+    if (!list) return;
+    if (!gens.length) { list.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    list.innerHTML = gens.map(function (g) {
+      var type = g.type || "video";
+      var badge = g.status === "completed"
+        ? '<span class="badge done">Done</span>'
+        : g.status === "failed"
+          ? '<span class="badge failed">Failed</span>'
+          : '<span class="badge running">Running</span>';
+      var sample = g.demo ? ' <span class="badge sample">Demo</span>' : "";
+      var ic = type === "image" ? "&#9638;" : "&#9654;";
+      var when = "";
+      try { when = new Date(g.createdAt).toLocaleString(); } catch (e) {}
+      return '<div class="act-row"><div class="act-ic">' + ic + "</div>" +
+        '<div class="act-main"><p class="act-prompt" title="' + esc(g.prompt) + '">' + esc(g.prompt) + "</p>" +
+        '<div class="act-meta"><span class="type-tag">' + esc(type) + "</span>" +
+        "<span>" + esc(g.model || "—") + '</span><span class="dot-sep">•</span>' +
+        '<span title="' + esc(when) + '">' + esc(timeAgo(g.createdAt)) + "</span>" + sample +
+        "</div></div>" + badge + "</div>";
+    }).join("");
+  }
+
+  /* ---------- command palette (Ctrl+K) ---------- */
+  function goUrl(u) {
+    var here = location.pathname.split("/").pop() || "index.html";
+    var target = u.split("#")[0];
+    if (target === here && u.indexOf("#") === -1) { closePalette(); return; }
+    location.href = u;
+  }
+  var __palOverlay = null;
+  function closePalette() {
+    if (__palOverlay) __palOverlay.classList.remove("show");
+  }
+  function initPalette() {
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.id = "paletteOverlay";
+    overlay.innerHTML =
+      '<div class="dialog palette">' +
+      '<input type="text" id="palInput" placeholder="Type a command or search pages…" autocomplete="off" aria-label="Command palette">' +
+      '<div class="pal-list" id="palList"></div>' +
+      "</div>";
+    document.body.appendChild(overlay);
+    __palOverlay = overlay;
+    var input = $("#palInput", overlay);
+    var list = $("#palList", overlay);
+    var items = [
+      { t: "Go to Home", k: "page", run: function () { goUrl("index.html"); } },
+      { t: "Go to Create", k: "page", run: function () { goUrl("create.html"); } },
+      { t: "Go to Assets", k: "page", run: function () { goUrl("gallery.html"); } },
+      { t: "Go to Activity", k: "page", run: function () { goUrl("activity.html"); } },
+      { t: "Go to Workflows", k: "page", run: function () { goUrl("workflows.html"); } },
+      { t: "Go to Settings", k: "page", run: function () { goUrl("settings.html"); } },
+      { t: "New video", k: "action", run: function () { goUrl("create.html"); } },
+      { t: "New image", k: "action", run: function () { goUrl("create.html#image"); } },
+      { t: "New workflow", k: "action", run: function () { goUrl("workflows.html"); } },
+      { t: "Toggle demo mode", k: "action", run: function () {
+          var c = loadCfg();
+          c.demoMode = !(c.demoMode !== false);
+          saveCfg(c); initChrome();
+          toast(c.demoMode ? "Demo mode on." : "Demo mode off — live mode needs API keys.", "ok");
+        } },
+      { t: "Reset demo credits", k: "action", run: function () {
+          setCredits(100); toast("Demo credits reset to 100.", "ok");
+        } }
+    ];
+    var sel = 0, filtered = items;
+    function paint() {
+      $all(".pal-item", list).forEach(function (b, i) {
+        b.classList.toggle("sel", i === sel);
+      });
+    }
+    function render() {
+      if (!filtered.length) { list.innerHTML = '<div class="pal-empty">No matches.</div>'; return; }
+      list.innerHTML = filtered.map(function (it, i) {
+        return '<button type="button" class="pal-item' + (i === sel ? " sel" : "") + '" data-i="' + i + '">' +
+          "<span>" + esc(it.t) + '</span><span class="k">' + esc(it.k) + "</span></button>";
+      }).join("");
+      $all(".pal-item", list).forEach(function (b) {
+        var i = parseInt(b.getAttribute("data-i"), 10);
+        b.addEventListener("click", function () { choose(i); });
+        b.addEventListener("mousemove", function () { sel = i; paint(); });
+      });
+    }
+    function choose(i) {
+      var it = filtered[i];
+      closePalette();
+      if (it) it.run();
+    }
+    function open() {
+      input.value = "";
+      filtered = items; sel = 0;
+      render();
+      overlay.classList.add("show");
+      setTimeout(function () { input.focus(); }, 30);
+    }
+    input.addEventListener("input", function () {
+      var q = input.value.trim().toLowerCase();
+      filtered = items.filter(function (it) { return it.t.toLowerCase().indexOf(q) !== -1; });
+      sel = 0;
+      render();
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); sel = (sel + 1) % Math.max(1, filtered.length); paint(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); sel = (sel - 1 + filtered.length) % Math.max(1, filtered.length); paint(); }
+      else if (e.key === "Enter") { e.preventDefault(); choose(sel); }
+      else if (e.key === "Escape") { closePalette(); }
+    });
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) closePalette(); });
+    document.addEventListener("keydown", function (e) {
+      var k = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && k === "k") {
+        e.preventDefault();
+        if (overlay.classList.contains("show")) closePalette(); else open();
+      } else if (e.key === "Escape") { closePalette(); }
+    });
+    var ss = $("#sideSearch");
+    if (ss) ss.addEventListener("click", open);
+  }
+
+  /* ---------- home: create-new dropdown ---------- */
+  function initCreateNew() {
+    var btn = $("#createNewBtn"), menu = $("#createNewMenu");
+    if (!btn || !menu) return;
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      menu.classList.toggle("show");
+    });
+    document.addEventListener("click", function (e) {
+      if (!menu.contains(e.target)) menu.classList.remove("show");
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") menu.classList.remove("show");
+    });
   }
 
   /* ---------- option cards (create page) ---------- */
@@ -239,6 +526,75 @@
       if (input.files && input.files.length) toast(input.files.length + " reference image(s) attached (local preview only).", "ok");
     });
   }
+
+  /* ---------- create page: media tabs + model grid ---------- */
+  function currentType() {
+    var t = document.querySelector(".tab.active");
+    return t ? t.getAttribute("data-type") : "video";
+  }
+  function renderModels(type) {
+    var grid = $("#modelGrid");
+    if (!grid) return;
+    var list = MEDIA_MODELS[type] || [];
+    var want = selByTab[type] || (list[0] && list[0].name);
+    grid.innerHTML = list.map(function (m) {
+      return '<button type="button" class="opt' + (m.name === want ? " sel" : "") + '" data-value="' + esc(m.name) + '">' +
+        CHECK_SVG +
+        '<span class="cost">⚡' + m.cost + "</span>" +
+        '<span class="opt-name">' + esc(m.name) + "</span>" +
+        '<div class="opt-sub">' + esc(m.sub) + "</div></button>";
+    }).join("");
+    $all(".opt", grid).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        $all(".opt", grid).forEach(function (b) { b.classList.remove("sel"); });
+        btn.classList.add("sel");
+        var v = btn.getAttribute("data-value");
+        var fm = $("#f_model");
+        if (fm) fm.value = v;
+        selByTab[type] = v;
+        updateGenBtn();
+      });
+    });
+    var fm = $("#f_model");
+    if (fm && want) fm.value = want;
+  }
+  function setMediaType(type, skipHash) {
+    if (!MEDIA_MODELS.hasOwnProperty(type)) type = "video";
+    $all(".tab").forEach(function (t) { t.classList.toggle("active", t.getAttribute("data-type") === type); });
+    var isAudio = type === "audio";
+    var isImage = type === "image";
+    var mf = $("#modelField"), df = $("#durationField"), rf = $("#refField"),
+        soon = $("#audioSoon"), gen = $("#generateBtn");
+    if (mf) mf.style.display = isAudio ? "none" : "";
+    if (df) df.style.display = (isAudio || isImage) ? "none" : "";
+    if (rf) rf.style.display = isAudio ? "none" : "";
+    if (soon) soon.style.display = isAudio ? "block" : "none";
+    if (gen) gen.style.display = isAudio ? "none" : "";
+    if (!isAudio) renderModels(type);
+    updateGenBtn();
+    if (!skipHash) {
+      try {
+        history.replaceState(null, "", type === "video" ? location.pathname + location.search : "#" + type);
+      } catch (e) {}
+    }
+  }
+  function setGenBtnLabel(mode) {
+    var btn = $("#generateBtn");
+    if (!btn) return;
+    var span = btn.querySelector("span");
+    if (mode === "busy") {
+      btn.disabled = true;
+      if (span) span.textContent = "Generating…";
+      return;
+    }
+    btn.disabled = false;
+    var type = currentType();
+    var label = type === "image" ? "Generate image" : "Generate video";
+    var fm = $("#f_model");
+    var cost = modelCost(fm ? fm.value : "");
+    if (span) span.textContent = label + " • ⚡" + cost;
+  }
+  function updateGenBtn() { setGenBtnLabel("idle"); }
 
   /* ---------- generation engine ---------- */
   function setStep(idx, state, sub) {
@@ -283,9 +639,12 @@
         logLine("Render complete (simulated).", "ok");
         var gen = {
           id: uuid(), prompt: job.prompt, model: job.model, ratio: job.ratio,
-          duration: job.duration, createdAt: Date.now(), status: "completed", demo: true
+          duration: job.duration, type: job.type || "video",
+          createdAt: Date.now(), status: "completed", demo: true
         };
         addGen(gen);
+        setCredits(getCredits() - (job.cost || 3));
+        maybeNotify("Render complete", job.prompt);
         finishGenerate(gen, true);
       } else {
         var ns = Math.min(3, Math.floor(pct / 26));
@@ -340,8 +699,7 @@
         logLine("Network error: the browser could not reach the API. This is usually CORS or connectivity — switch on Demo mode or use a server-side proxy.", "err");
       }
       setStep(0, "error", "Failed");
-      var btn = $("#generateBtn");
-      if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Generate video"; }
+      setGenBtnLabel("idle");
       toast("Generation failed — see the log.", "err");
     });
   }
@@ -351,8 +709,7 @@
     if (attempt >= MAX) {
       logLine("Timed out waiting (~3 min). The run may still finish — check Workflows.", "err");
       setStep(2, "error", "Timed out");
-      var btn = $("#generateBtn");
-      if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Generate video"; }
+      setGenBtnLabel("idle");
       return;
     }
     setStep(1, "active", "Run " + runId.slice(0, 8) + "… (poll " + (attempt + 1) + ")");
@@ -374,7 +731,8 @@
         var outs = data.outputs || data.output || {};
         var gen = {
           id: uuid(), prompt: job.prompt, model: job.model, ratio: job.ratio,
-          duration: job.duration, createdAt: Date.now(), status: "completed",
+          duration: job.duration, type: job.type || "video",
+          createdAt: Date.now(), status: "completed",
           demo: false, runId: runId, outputs: outs
         };
         addGen(gen);
@@ -383,8 +741,7 @@
         var msg = (data.error && (data.error.message || data.error)) || "run failed";
         logLine("Run failed: " + msg, "err");
         setStep(1, "error", "Failed");
-        var btn = $("#generateBtn");
-        if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Generate video"; }
+        setGenBtnLabel("idle");
         toast("Render failed: " + String(msg).slice(0, 120), "err");
       } else {
         setBar(Math.min(92, 12 + attempt * 2.4));
@@ -399,8 +756,7 @@
   }
 
   function finishGenerate(gen, wasDemo) {
-    var btn = $("#generateBtn");
-    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Generate video"; }
+    setGenBtnLabel("idle");
     var res = $("#genResult");
     if (res) {
       res.style.display = "block";
@@ -414,28 +770,42 @@
   function initCreate() {
     initOptGroups();
     initUpload();
+    // media tabs
+    $all(".tab").forEach(function (tab) {
+      tab.addEventListener("click", function () { setMediaType(tab.getAttribute("data-type")); });
+    });
+    var cfg0 = loadCfg();
+    if (cfg0.defaultModel) selByTab.video = cfg0.defaultModel;
+    var h = (location.hash || "").replace("#", "");
+    setMediaType(h === "image" ? "image" : (h === "audio" ? "audio" : "video"), true);
     var form = $("#createForm");
     if (!form) return;
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
+      var type = currentType();
       var prompt = $("#f_prompt").value.trim();
       if (prompt.length < 8) { toast("Describe your shot in a little more detail first.", "err"); $("#f_prompt").focus(); return; }
+      var modelName = $("#f_model").value || selByTab.video;
       var job = {
         prompt: prompt,
-        model: $("#f_model").value || "Seedance 2.5",
+        model: modelName,
         ratio: $("#f_ratio").value || "16:9",
-        duration: $("#f_duration").value || "10s"
+        duration: type === "image" ? "" : ($("#f_duration").value || "10s"),
+        type: type,
+        cost: modelCost(modelName)
       };
       var cfg = loadCfg();
-      var btn = $("#generateBtn");
-      btn.disabled = true;
-      btn.querySelector("span").textContent = "Generating…";
+      if (!isLive() && getCredits() < job.cost) {
+        toast("Not enough demo credits (need ⚡" + job.cost + "). Reset them in Settings.", "err");
+        return;
+      }
+      setGenBtnLabel("busy");
       $("#genProgress").style.display = "block";
       $("#genResult").style.display = "none";
       $("#genLog").innerHTML = "";
       setBar(2);
       $all(".step").forEach(function (s) { s.classList.remove("active", "done", "error"); });
-      logLine("Job: " + job.model + " · " + job.ratio + " · " + job.duration, "inf");
+      logLine("Job: " + job.model + " · " + job.ratio + (job.duration ? " · " + job.duration : "") + " · " + job.type, "inf");
       if (isLive()) realGenerate(cfg, job);
       else {
         if (!cfg.demoMode && !(cfg.apiKey || cfg.orgId)) {
@@ -546,17 +916,63 @@
     Object.keys(map).forEach(function (k) { var el = $(map[k]); if (el && cfg[k]) el.value = cfg[k]; });
     var demo = $("#s_demo");
     if (demo) demo.checked = cfg.demoMode !== false; // default ON (safe)
+    // profile
+    var prof = cfg.profile || {};
+    var nameEl = $("#s_name");
+    if (nameEl && prof.name) nameEl.value = prof.name;
+    var swColors = ["#2b7fff", "#7c5cff", "#34d399", "#f472b6", "#fbbf24"];
+    var curColor = prof.color || "#2b7fff";
+    var sw = $("#avatarSwatches");
+    if (sw) {
+      sw.innerHTML = swColors.map(function (c) {
+        return '<button type="button" class="swatch' + (c === curColor ? " sel" : "") + '" data-c="' + c + '" style="background:' + c + '" aria-label="Avatar color ' + c + '"></button>';
+      }).join("");
+      sw.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest(".swatch") : null;
+        if (!b) return;
+        $all(".swatch", sw).forEach(function (x) { x.classList.remove("sel"); });
+        b.classList.add("sel");
+      });
+    }
+    // preferences
+    var dm = $("#s_model");
+    if (dm) {
+      dm.innerHTML = MEDIA_MODELS.video.map(function (m) {
+        return '<option value="' + esc(m.name) + '"' + (cfg.defaultModel === m.name ? " selected" : "") + ">" + esc(m.name) + "</option>";
+      }).join("");
+    }
+    var nt = $("#s_notify");
+    if (nt) {
+      nt.checked = !!cfg.notify;
+      nt.addEventListener("change", function () {
+        if (nt.checked && "Notification" in window && Notification.permission === "default") {
+          Notification.requestPermission();
+        }
+      });
+    }
+    var bv = $("#credBalanceView");
+    if (bv) bv.textContent = "⚡" + getCredits();
+    var rc = $("#resetCredBtn");
+    if (rc) rc.addEventListener("click", function () { setCredits(100); toast("Demo credits reset to 100.", "ok"); });
     var form = $("#settingsForm");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
+      var selSw = $("#avatarSwatches .swatch.sel");
+      var sName = $("#s_name"), sModel = $("#s_model"), sNotify = $("#s_notify");
       saveCfg({
         apiKey: $("#s_key").value.trim(),
         orgId: $("#s_org").value.trim(),
         projectId: $("#s_project").value.trim(),
         workflowId: $("#s_workflow").value.trim(),
-        demoMode: $("#s_demo").checked
+        demoMode: $("#s_demo").checked,
+        profile: {
+          name: sName ? sName.value.trim().slice(0, 24) : "",
+          color: selSw ? selSw.getAttribute("data-c") : "#2b7fff"
+        },
+        defaultModel: sModel ? sModel.value : "",
+        notify: !!(sNotify && sNotify.checked)
       });
-      initChrome(); // refresh mode pill
+      initChrome(); // refresh mode pill + avatar
       toast("Settings saved in this browser.", "ok");
     });
     $("#clearBtn").addEventListener("click", function () {
@@ -594,10 +1010,12 @@
     if (window.__studio_booted) return; // guard against double-firing
     window.__studio_booted = true;
     initChrome();
+    initPalette();
     var page = document.body.getAttribute("data-page");
-    if (page === "home") initDashboard();
+    if (page === "home") { initDashboard(); initCreateNew(); }
     else if (page === "gallery") initGallery();
     else if (page === "create") initCreate();
+    else if (page === "activity") initActivity();
     else if (page === "workflows") initWorkflows();
     else if (page === "settings") initSettings();
   });
