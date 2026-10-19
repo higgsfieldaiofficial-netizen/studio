@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STUDIO — Settings</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="settings">
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="brand-mark">S</span><span class="brand-name">STUDIO</span></div>
+    <nav class="nav">
+      <a href="index.html" data-nav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+      <a href="create.html" data-nav="create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Create</a>
+      <a href="gallery.html" data-nav="gallery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Gallery</a>
+      <a href="workflows.html" data-nav="workflows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Workflows</a>
+      <a href="settings.html" data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+    </nav>
+    <div class="side-foot">
+      <div class="mode-pill" id="modePill"><span class="mode-dot"></span>Checking…</div>
+      <p class="side-note">Name &amp; logo arrive later — this build is the working core.</p>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div>
+        <h1>Settings</h1>
+        <p class="topbar-sub">Connections, keys and safety switches</p>
+      </div>
+      <div class="topbar-right">
+        <div class="credits-pill"><span class="bolt">⚡</span><span id="creditPill">— credits</span></div>
+        <div class="avatar">A</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <form id="settingsForm" autocomplete="off">
+        <div class="panel">
+          <h3>Render service connection</h3>
+          <p class="desc">Paste the credentials from your studio account. They are stored only in this browser's local storage — never sent anywhere except the render API itself.</p>
+          <div class="field">
+            <label for="s_key">API key</label>
+            <input type="password" id="s_key" class="mono" placeholder="Paste key…" autocomplete="new-password">
+            <p class="hint">Sent as a Bearer token on API calls only.</p>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="s_org">Org ID</label>
+              <input type="text" id="s_org" class="mono" placeholder="e.g. 01a0349e-…">
+            </div>
+            <div class="field">
+              <label for="s_project">Project ID</label>
+              <input type="text" id="s_project" class="mono" placeholder="From the editor URL …/editor/&lt;id&gt;/canvas">
+            </div>
+          </div>
+          <div class="field">
+            <label for="s_workflow">Default workflow ID</label>
+            <input type="text" id="s_workflow" class="mono" placeholder="Used by the Create page">
+            <p class="hint">Manage the full list on the <a href="workflows.html" style="color:var(--accent-2);font-weight:600">Workflows</a> page.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="submit" class="btn">Save settings</button>
+            <button type="button" class="btn btn-ghost" id="testBtn">Test connection</button>
+            <button type="button" class="btn btn-danger" id="clearBtn">Remove saved keys</button>
+          </div>
+          <div class="test-result" id="testResult"></div>
+        </div>
+
+        <div class="panel" style="margin-top:18px">
+          <h3>Demo mode</h3>
+          <p class="desc">When on, the Create page simulates renders locally — no credits spent, nothing leaves the browser. Turn it off (with keys saved above) for real renders.</p>
+          <div class="toggle-row">
+            <span class="t-text"><b>Demo mode</b><p>Safe default. Recommended until your first real render.</p></span>
+            <label class="switch"><input type="checkbox" id="s_demo" checked><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          <b>Key safety.</b> Anything saved here lives in this browser's local storage in plain text. Don't use this page on shared machines, and prefer a tiny server-side proxy before handing this app to clients — keys in client-side code can be read by anyone.
+        </div>
+      </form>
+      <p class="footer-note">Settings never leave this device</p>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="assets/app.js"></script>
+</body>
+</html>
