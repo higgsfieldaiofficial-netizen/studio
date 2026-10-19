@@ -94,13 +94,13 @@
       pill.innerHTML = '<span class="mode-dot' + (live ? " live" : "") + '"></span>' +
         (live ? "Live API connected" : "Demo mode — connect API in Settings");
     }
-    var cp = $("#creditPill");
-    if (cp) cp.textContent = live ? "Live API" : "Demo mode";
+    var cb = $("#creditBadge");
+    if (cb) cb.textContent = live ? "Live" : "0";
   }
 
   /* ---------- thumbnails (pure CSS gradients) ---------- */
   var GRADIENTS = [
-    ["#7c5cff", "#2a1a5e"], ["#0ea5e9", "#1e1b4b"], ["#f472b6", "#4c1d95"],
+    ["#2b7fff", "#2a1a5e"], ["#0ea5e9", "#1e1b4b"], ["#f472b6", "#4c1d95"],
     ["#34d399", "#064e3b"], ["#fbbf24", "#7c2d12"], ["#60a5fa", "#312e81"],
     ["#a78bfa", "#0f172a"], ["#fb7185", "#3b0764"], ["#22d3ee", "#134e4a"],
     ["#e879f9", "#1e1b4b"]
@@ -595,7 +595,7 @@
     window.__studio_booted = true;
     initChrome();
     var page = document.body.getAttribute("data-page");
-    if (page === "dashboard") initDashboard();
+    if (page === "home") initDashboard();
     else if (page === "gallery") initGallery();
     else if (page === "create") initCreate();
     else if (page === "workflows") initWorkflows();
