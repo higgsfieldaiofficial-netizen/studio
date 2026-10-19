@@ -11,9 +11,9 @@
   <aside class="sidebar" id="sidebar">
     <div class="brand"><span class="brand-mark">S</span><span class="brand-name">STUDIO</span></div>
     <nav class="nav">
-      <a href="index.html" data-nav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+      <a href="index.html" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Home</a>
       <a href="create.html" data-nav="create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Create</a>
-      <a href="gallery.html" data-nav="gallery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Gallery</a>
+      <a href="gallery.html" data-nav="gallery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Assets</a>
       <a href="workflows.html" data-nav="workflows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Workflows</a>
       <a href="settings.html" data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
     </nav>
@@ -32,7 +32,7 @@
         <p class="topbar-sub">Describe the shot — the studio renders the rest</p>
       </div>
       <div class="topbar-right">
-        <div class="credits-pill"><span class="bolt">⚡</span><span id="creditPill">— credits</span></div>
+        <div class="credits-pill"><span class="bolt">⚡</span><span id="creditBadge">0</span></div>
         <div class="avatar">A</div>
       </div>
     </header>
@@ -42,7 +42,7 @@
         <div class="panel">
           <div class="field">
             <label for="f_prompt">Prompt</label>
-            <textarea id="f_prompt" placeholder="A slow aerial push over a misty pine forest at dawn, golden light breaking through the trees, cinematic depth…"></textarea>
+            <textarea id="f_prompt" placeholder="Imagine..."></textarea>
             <p class="hint">Be specific about subject, motion, lighting and mood. One clear shot beats three vague ones.</p>
           </div>
 
@@ -51,10 +51,15 @@
             <input type="hidden" id="f_model" value="Seedance 2.5">
             <div class="opt-grid models" data-opt-group="model">
               <button type="button" class="opt sel" data-value="Seedance 2.5"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Seedance 2.5</span><div class="opt-sub">Long takes · native motion</div></button>
-              <button type="button" class="opt" data-value="Kling 2.0"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Kling 2.0</span><div class="opt-sub">Realistic physics</div></button>
-              <button type="button" class="opt" data-value="Hailuo MiniMax"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Hailuo MiniMax</span><div class="opt-sub">Stylised looks</div></button>
-              <button type="button" class="opt" data-value="Luma Dream Machine"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Luma Dream Machine</span><div class="opt-sub">Dreamy camera moves</div></button>
-              <button type="button" class="opt" data-value="Runway Gen-4"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Runway Gen-4</span><div class="opt-sub">Pro control</div></button>
+              <button type="button" class="opt" data-value="Kling 3.0"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Kling 3.0</span><div class="opt-sub">Realistic physics</div></button>
+              <button type="button" class="opt" data-value="Veo 3.1"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Veo 3.1</span><div class="opt-sub">Cinematic realism</div></button>
+              <button type="button" class="opt" data-value="Hailuo 2.3"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Hailuo 2.3</span><div class="opt-sub">Stylised looks</div></button>
+              <button type="button" class="opt" data-value="MiniMax H3"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">MiniMax H3</span><div class="opt-sub">Expressive characters</div></button>
+              <button type="button" class="opt" data-value="Wan 3.0"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Wan 3.0</span><div class="opt-sub">Open video model</div></button>
+              <button type="button" class="opt" data-value="Vidu Q3"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Vidu Q3</span><div class="opt-sub">Fast, vivid clips</div></button>
+              <button type="button" class="opt" data-value="LTX 2.5"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">LTX 2.5</span><div class="opt-sub">Real-time speed</div></button>
+              <button type="button" class="opt" data-value="Grok Imagine"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Grok Imagine</span><div class="opt-sub">Bold, playful styles</div></button>
+              <button type="button" class="opt" data-value="Seedance 2.5 Draft"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span class="opt-name">Seedance 2.5 Draft</span><div class="opt-sub">Quick previews</div></button>
             </div>
             <p class="hint">The label travels with the job so the workflow knows which engine you meant.</p>
           </div>
