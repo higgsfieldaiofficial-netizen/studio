@@ -98,6 +98,13 @@
   function setCredits(v) {
     try { localStorage.setItem(CRED_KEY, String(Math.max(0, v))); } catch (e) {}
     updateCreditBadge();
+    var pill = $(".credits-pill");
+    if (pill) {
+      pill.classList.remove("pulse");
+      void pill.offsetWidth;
+      pill.classList.add("pulse");
+      setTimeout(function () { pill.classList.remove("pulse"); }, 500);
+    }
     var bv = $("#credBalanceView");
     if (bv) bv.textContent = "⚡" + getCredits();
   }
@@ -175,13 +182,15 @@
 
   /* ---------- toast ---------- */
   var toastTimer = null;
+  var TOAST_ICONS = { ok: "\u2713", err: "\u2715", info: "\u2139" };
   function toast(msg, kind) {
     var t = $("#toast");
     if (!t) { alert(msg); return; }
-    t.textContent = msg;
-    t.className = "toast show" + (kind ? " " + kind : "");
+    kind = TOAST_ICONS[kind] ? kind : "info";
+    t.innerHTML = '<span class="t-ico">' + TOAST_ICONS[kind] + "</span><span>" + esc(msg) + "</span>";
+    t.className = "toast show " + kind;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.className = "toast"; }, 3400);
+    toastTimer = setTimeout(function () { t.className = "toast"; }, 3000);
   }
 
   /* ---------- nav / drawer ---------- */
@@ -205,7 +214,8 @@
     var live = isLive();
     if (pill) {
       pill.innerHTML = '<span class="mode-dot' + (live ? " live" : "") + '"></span>' +
-        (live ? "Live API connected" : "Demo mode — connect API in Settings");
+        (live ? "Live API connected" : "Demo mode");
+      pill.title = live ? "Real renders via your API key" : "Simulated renders — connect an API key in Settings to go live";
     }
     updateCreditBadge();
     updateAvatar();
@@ -349,7 +359,14 @@
         apply();
       });
     });
-    apply();
+    var skelMs = (typeof window.STUDIO_SKEL_MS === "number") ? window.STUDIO_SKEL_MS : 600;
+    (function skeletons() {
+      var grid = $("#galleryGrid");
+      if (!grid) return;
+      grid.classList.remove("list");
+      grid.innerHTML = new Array(6 + 1).join('<div class="skel"></div>');
+    })();
+    setTimeout(apply, skelMs);
   }
 
   /* ---------- activity page ---------- */
@@ -398,6 +415,7 @@
       '<div class="dialog palette">' +
       '<input type="text" id="palInput" placeholder="Type a command or search pages…" autocomplete="off" aria-label="Command palette">' +
       '<div class="pal-list" id="palList"></div>' +
+      '<div class="pal-foot"><span><b>\u2191\u2193</b> navigate</span><span><b>Enter</b> select</span><span><b>Esc</b> close</span></div>' +
       "</div>";
     document.body.appendChild(overlay);
     __palOverlay = overlay;
@@ -431,10 +449,17 @@
     }
     function render() {
       if (!filtered.length) { list.innerHTML = '<div class="pal-empty">No matches.</div>'; return; }
-      list.innerHTML = filtered.map(function (it, i) {
+      function btnHTML(it) {
+        var i = filtered.indexOf(it);
         return '<button type="button" class="pal-item' + (i === sel ? " sel" : "") + '" data-i="' + i + '">' +
           "<span>" + esc(it.t) + '</span><span class="k">' + esc(it.k) + "</span></button>";
-      }).join("");
+      }
+      var pages = filtered.filter(function (it) { return it.k === "page"; });
+      var actions = filtered.filter(function (it) { return it.k !== "page"; });
+      var html = "";
+      if (pages.length) html += '<div class="pal-group">Pages</div>' + pages.map(btnHTML).join("");
+      if (actions.length) html += '<div class="pal-group">Actions</div>' + actions.map(btnHTML).join("");
+      list.innerHTML = html;
       $all(".pal-item", list).forEach(function (b) {
         var i = parseInt(b.getAttribute("data-i"), 10);
         b.addEventListener("click", function () { choose(i); });
@@ -597,12 +622,17 @@
   function updateGenBtn() { setGenBtnLabel("idle"); }
 
   /* ---------- generation engine ---------- */
+  var STEP_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
   function setStep(idx, state, sub) {
     var steps = $all(".step");
     steps.forEach(function (s, i) {
       s.classList.remove("active", "done", "error");
-      if (i < idx) s.classList.add("done");
-      else if (i === idx) s.classList.add(state === "error" ? "error" : state === "done" ? "done" : "active");
+      var dot = $(".step-dot", s);
+      if (i < idx) { s.classList.add("done"); if (dot) dot.innerHTML = STEP_CHECK; }
+      else if (i === idx) {
+        s.classList.add(state === "error" ? "error" : state === "done" ? "done" : "active");
+        if (dot && state === "done") dot.innerHTML = STEP_CHECK;
+      }
     });
     if (sub != null) {
       var el = steps[idx] && $(".step-s", steps[idx]);
@@ -628,14 +658,14 @@
     setStep(0, "active", "Demo render queued…");
     logLine("Demo mode: simulating a render locally (no credits spent).", "inf");
     var pct = 0, step = 0;
-    var stages = ["Queued", "Dreaming frames", "Rendering motion", "Upscaling", "Done"];
-    var subs = ["Job accepted", "Diffusing keyframes…", "Temporal pass…", "Polish pass…", "Complete"];
+    var stages = ["Queued", "Rendering", "Finalizing"];
+    var subs = ["Job accepted", "Diffusing frames…", "Temporal + polish pass…", "Complete"];
     var timer = setInterval(function () {
       pct += 4 + Math.random() * 7;
       if (pct >= 100) {
         clearInterval(timer);
         setBar(100);
-        setStep(4, "done", subs[4]);
+        setStep(3, "done", subs[3]);
         logLine("Render complete (simulated).", "ok");
         var gen = {
           id: uuid(), prompt: job.prompt, model: job.model, ratio: job.ratio,
@@ -647,7 +677,7 @@
         maybeNotify("Render complete", job.prompt);
         finishGenerate(gen, true);
       } else {
-        var ns = Math.min(3, Math.floor(pct / 26));
+        var ns = Math.min(2, Math.floor(pct / 34));
         if (ns !== step) { step = ns; setStep(step, "active", subs[step]); logLine(stages[step] + "…"); }
         setBar(pct);
       }
@@ -804,7 +834,11 @@
       $("#genResult").style.display = "none";
       $("#genLog").innerHTML = "";
       setBar(2);
-      $all(".step").forEach(function (s) { s.classList.remove("active", "done", "error"); });
+      $all(".step").forEach(function (s, i) {
+        s.classList.remove("active", "done", "error");
+        var d = $(".step-dot", s);
+        if (d) d.textContent = String(i + 1);
+      });
       logLine("Job: " + job.model + " · " + job.ratio + (job.duration ? " · " + job.duration : "") + " · " + job.type, "inf");
       if (isLive()) realGenerate(cfg, job);
       else {
@@ -829,12 +863,12 @@
     wrap.style.display = "block"; empty.style.display = "none";
     body.innerHTML = wfs.map(function (w) {
       return "<tr>" +
-        "<td><b>" + esc(w.name) + "</b></td>" +
-        '<td class="id-cell" title="' + esc(w.id) + '">' + esc(w.id) + "</td>" +
-        "<td>" + esc(w.addedAt ? fmtDate(w.addedAt) : "—") + "</td>" +
-        "<td>" + esc(w.lastRun ? timeAgo(w.lastRun) : "Never") + "</td>" +
-        "<td>" + wfStatusBadge(w) + "</td>" +
-        '<td><div class="row-actions">' +
+        '<td data-th="Name"><b>' + esc(w.name) + "</b></td>" +
+        '<td class="id-cell" data-th="Workflow ID" title="' + esc(w.id) + '">' + esc(w.id) + "</td>" +
+        '<td data-th="Added">' + esc(w.addedAt ? fmtDate(w.addedAt) : "—") + "</td>" +
+        '<td data-th="Last run">' + esc(w.lastRun ? timeAgo(w.lastRun) : "Never") + "</td>" +
+        '<td data-th="Status">' + wfStatusBadge(w) + "</td>" +
+        '<td data-th="Actions"><div class="row-actions">' +
           '<button class="btn btn-ghost btn-sm" data-wf="use" data-id="' + esc(w.id) + '">Use</button>' +
           '<button class="btn btn-ghost btn-sm" data-wf="check" data-id="' + esc(w.id) + '">Check</button>' +
           '<button class="btn btn-danger btn-sm" data-wf="del" data-id="' + esc(w.id) + '">Delete</button>' +
@@ -1004,6 +1038,9 @@
       });
     });
   }
+
+  /* test hook (harmless in production) */
+  window.__studioTest = { setCredits: setCredits, getCredits: getCredits, toast: toast };
 
   /* ---------- boot ---------- */
   document.addEventListener("DOMContentLoaded", function () {
