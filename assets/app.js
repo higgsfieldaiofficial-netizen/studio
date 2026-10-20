@@ -61,8 +61,6 @@
   var FORM_POST_URL = "https://docs.google.com/forms/d/e/1FAIpQLScmvKniKtt2whkRwoFmq1TbapBrBKhdyCzITzBulWvF7-Pgmw/formResponse";
   var FORM_FIELDS = {
     id: "entry.16647374",
-    name: "entry.167649691",
-    whatsapp: "entry.1961515114",
     type: "entry.1898962646",
     model: "entry.1392274546",
     ratio: "entry.1447666766",
@@ -93,8 +91,6 @@
   function submitRequest(req) {
     var params = new URLSearchParams();
     params.set(FORM_FIELDS.id, req.id);
-    params.set(FORM_FIELDS.name, req.name || "");
-    params.set(FORM_FIELDS.whatsapp, req.whatsapp || "");
     params.set(FORM_FIELDS.type, req.type || "");
     params.set(FORM_FIELDS.model, req.model || "");
     params.set(FORM_FIELDS.ratio, req.ratio || "");
@@ -690,11 +686,10 @@
     var isAudio = type === "audio";
     var isImage = type === "image";
     var mf = $("#modelField"), df = $("#durationField"), rf = $("#refField"),
-        soon = $("#audioSoon"), gen = $("#generateBtn"), cf = $("#contactFields");
+        soon = $("#audioSoon"), gen = $("#generateBtn");
     if (mf) mf.style.display = isAudio ? "none" : "";
     if (df) df.style.display = (isAudio || isImage) ? "none" : "";
     if (rf) rf.style.display = isAudio ? "none" : "";
-    if (cf) cf.style.display = isAudio ? "none" : "";
     if (soon) soon.style.display = isAudio ? "block" : "none";
     if (gen) gen.style.display = isAudio ? "none" : "";
     if (!isAudio) renderModels(type);
@@ -923,32 +918,18 @@
     if (cfg0.defaultModel) selByTab.video = cfg0.defaultModel;
     var h = (location.hash || "").replace("#", "");
     setMediaType(h === "image" ? "image" : (h === "audio" ? "audio" : "video"), true);
-    var nameEl = $("#f_name");
-    if (nameEl && !nameEl.value) {
-      var profName = loadProfile().name;
-      if (profName) nameEl.value = profName;
-    }
     var form = $("#createForm");
     if (!form) return;
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
       var type = currentType();
       if (type === "audio") { toast("Audio is coming soon — pick Video or Image.", "err"); return; }
-      var nameFld = $("#f_name"), waFld = $("#f_whatsapp");
-      var name = nameFld ? nameFld.value.trim() : "";
-      var whatsapp = waFld ? waFld.value.trim() : "";
       var prompt = $("#f_prompt").value.trim();
-      if (!name) { toast("Please enter your name.", "err"); if (nameFld) nameFld.focus(); return; }
-      if (whatsapp.replace(/\D/g, "").length < 10) {
-        toast("Please enter a valid WhatsApp number (at least 10 digits).", "err");
-        if (waFld) waFld.focus();
-        return;
-      }
       if (!prompt) { toast("Describe what you want to create first.", "err"); $("#f_prompt").focus(); return; }
       var req = {
         id: genRequestId(),
-        name: name,
-        whatsapp: whatsapp,
+        name: "",
+        whatsapp: "",
         type: type,
         model: $("#f_model").value || selByTab[type] || "",
         ratio: $("#f_ratio").value || "16:9",
