@@ -56,6 +56,84 @@
   }
   function persistWfs(wfs) { localStorage.setItem(WF_KEY, JSON.stringify(wfs)); }
 
+  /* ---------- real request system (form intake + sheet results) ---------- */
+  var REQ_KEY = "studio_requests";
+  var FORM_POST_URL = "https://docs.google.com/forms/d/e/1FAIpQLScmvKniKtt2whkRwoFmq1TbapBrBKhdyCzITzBulWvF7-Pgmw/formResponse";
+  var FORM_FIELDS = {
+    id: "entry.16647374",
+    name: "entry.167649691",
+    whatsapp: "entry.1961515114",
+    type: "entry.1898962646",
+    model: "entry.1392274546",
+    ratio: "entry.1447666766",
+    duration: "entry.1278735258",
+    prompt: "entry.1152153627"
+  };
+  var RESULTS_SHEET_ID = "1HsLHrpoSHpiirFcHRHqksdliVNLoojk3uhc3PnN1z7A";
+  var RESULTS_GVIZ_URL = "https://docs.google.com/spreadsheets/d/" + RESULTS_SHEET_ID + "/gviz/tq?tqx=out:json";
+  // Results sheet columns: RequestID | Status | Type | ResultURL | Updated
+
+  function loadRequests() {
+    try { return JSON.parse(localStorage.getItem(REQ_KEY)) || []; } catch (e) { return []; }
+  }
+  function persistRequests(reqs) {
+    try { localStorage.setItem(REQ_KEY, JSON.stringify(reqs.slice(0, 100))); } catch (e) {}
+  }
+  function addRequest(req) {
+    var reqs = loadRequests();
+    reqs.unshift(req);
+    persistRequests(reqs);
+    return req;
+  }
+  function genRequestId() {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", rnd = "";
+    for (var i = 0; i < 3; i++) rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+    return "AVX-" + Date.now().toString(36).toUpperCase() + rnd;
+  }
+  function submitRequest(req) {
+    var params = new URLSearchParams();
+    params.set(FORM_FIELDS.id, req.id);
+    params.set(FORM_FIELDS.name, req.name || "");
+    params.set(FORM_FIELDS.whatsapp, req.whatsapp || "");
+    params.set(FORM_FIELDS.type, req.type || "");
+    params.set(FORM_FIELDS.model, req.model || "");
+    params.set(FORM_FIELDS.ratio, req.ratio || "");
+    params.set(FORM_FIELDS.duration, req.duration || "");
+    params.set(FORM_FIELDS.prompt, req.prompt || "");
+    if (typeof fetch !== "function") return;
+    try {
+      var p = fetch(FORM_POST_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params
+      });
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  function copyText(txt) {
+    function done() { toast("Request ID copied: " + txt, "ok"); }
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) {}
+      done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      var p = navigator.clipboard.writeText(txt);
+      if (p && p.then) { p.then(done, fallback); return; }
+      done();
+      return;
+    }
+    fallback();
+  }
+
   /* ---------- media models + demo credits + profile ---------- */
   var MEDIA_MODELS = {
     video: [
@@ -134,23 +212,31 @@
 
   /* ---------- bundled demo videos (real clips, honest labels) ---------- */
   var BUNDLED_DEMOS = [
-    { src: "assets/demos/demo1.mp4", title: "Golden-hour property showcase", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 2 * 864e5 },
-    { src: "assets/demos/demo2.mp4", title: "Lifestyle product clip", model: "Kling 2.0", type: "video", createdAt: Date.now() - 3 * 864e5 },
-    { src: "assets/demos/demo3.mp4", title: "Yogabars product ad — AI UGC", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 5 * 864e5 },
-    { src: "assets/demos/demo4.mp4", title: "Test render", model: "Kling 2.0", type: "video", createdAt: Date.now() - 6 * 864e5 },
-    { src: "assets/demos/demo5.mp4", title: "Cinematic club entry — AI music video", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 1 * 864e5 },
-    { src: "assets/demos/demo6.mp4", title: "Mountain road drive — Defender film", model: "Kling 3.0", type: "video", createdAt: Date.now() - 2 * 864e5 },
-    { src: "assets/demos/demo7.mp4", title: "Beach sunset drive", model: "Hailuo 2.3", type: "video", createdAt: Date.now() - 3 * 864e5 },
-    { src: "assets/demos/demo8.mp4", title: "The Dare — horror short", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 4 * 864e5 }
+    { src: "assets/demos/demo1.mp4", title: "Neon city drive — sample", sample: true, type: "video", createdAt: Date.now() - 2 * 864e5 },
+    { src: "assets/demos/demo2.mp4", title: "Ocean aerial — sample", sample: true, type: "video", createdAt: Date.now() - 3 * 864e5 },
+    { src: "assets/demos/demo3.mp4", title: "Luxury product shot — sample", sample: true, type: "video", createdAt: Date.now() - 5 * 864e5 },
+    { src: "assets/demos/demo4.mp4", title: "Fashion portrait — sample", sample: true, type: "video", createdAt: Date.now() - 1 * 864e5 },
+    { src: "assets/demos/demo5.mp4", title: "Mountain aerial — sample", sample: true, type: "video", createdAt: Date.now() - 2 * 864e5 },
+    { src: "assets/demos/demo6.mp4", title: "Morning coffee — sample", sample: true, type: "video", createdAt: Date.now() - 3 * 864e5 },
+    { src: "assets/demos/demo7.mp4", title: "Ink in water — sample", sample: true, type: "video", createdAt: Date.now() - 4 * 864e5 },
+    { src: "assets/demos/demo8.mp4", title: "City architecture — sample", sample: true, type: "video", createdAt: Date.now() - 6 * 864e5 }
   ];
   function demoVideoCard(d, compact) {
+    var meta;
+    if (d.sample) {
+      // Stock sample footage: SAMPLE badge only — never label it as AI-model output.
+      meta = '<span class="badge done">Done</span> <span class="badge sample">Sample</span>' +
+        '<span class="dot-sep">•</span>' + "<span>" + esc(timeAgo(d.createdAt)) + "</span>";
+    } else {
+      meta = '<span class="badge done">Done</span> <span class="badge sample">Demo</span>' +
+        "<span>" + esc(d.model) + '</span><span class="dot-sep">•</span>' +
+        "<span>" + esc(timeAgo(d.createdAt)) + "</span>";
+    }
     return '<article class="gen-card demo-video-card' + (compact ? " featured-card" : "") + '">' +
       '<div class="thumb"><video src="' + esc(d.src) + '" muted loop playsinline preload="metadata"></video>' +
       '<span class="play">' + PLAY_SVG + "</span></div>" +
       '<div class="gen-body"><p class="gen-prompt">' + esc(d.title) + "</p>" +
-      '<div class="gen-meta"><span class="badge done">Done</span> <span class="badge sample">Demo</span>' +
-      "<span>" + esc(d.model) + '</span><span class="dot-sep">•</span>' +
-      "<span>" + esc(timeAgo(d.createdAt)) + "</span>" +
+      '<div class="gen-meta">' + meta +
       "</div></div></article>";
   }
   function bindDemoVideos(root) {
@@ -440,6 +526,7 @@
       { t: "Go to Create", k: "page", run: function () { goUrl("create.html"); } },
       { t: "Go to Assets", k: "page", run: function () { goUrl("gallery.html"); } },
       { t: "Go to Activity", k: "page", run: function () { goUrl("activity.html"); } },
+      { t: "Go to My Requests", k: "page", run: function () { goUrl("requests.html"); } },
       { t: "Go to Workflows", k: "page", run: function () { goUrl("workflows.html"); } },
       { t: "Go to Settings", k: "page", run: function () { goUrl("settings.html"); } },
       { t: "New video", k: "action", run: function () { goUrl("create.html"); } },
@@ -603,10 +690,11 @@
     var isAudio = type === "audio";
     var isImage = type === "image";
     var mf = $("#modelField"), df = $("#durationField"), rf = $("#refField"),
-        soon = $("#audioSoon"), gen = $("#generateBtn");
+        soon = $("#audioSoon"), gen = $("#generateBtn"), cf = $("#contactFields");
     if (mf) mf.style.display = isAudio ? "none" : "";
     if (df) df.style.display = (isAudio || isImage) ? "none" : "";
     if (rf) rf.style.display = isAudio ? "none" : "";
+    if (cf) cf.style.display = isAudio ? "none" : "";
     if (soon) soon.style.display = isAudio ? "block" : "none";
     if (gen) gen.style.display = isAudio ? "none" : "";
     if (!isAudio) renderModels(type);
@@ -623,15 +711,12 @@
     var span = btn.querySelector("span");
     if (mode === "busy") {
       btn.disabled = true;
-      if (span) span.textContent = "Generating…";
+      if (span) span.textContent = "Sending…";
       return;
     }
     btn.disabled = false;
     var type = currentType();
-    var label = type === "image" ? "Generate image" : "Generate video";
-    var fm = $("#f_model");
-    var cost = modelCost(fm ? fm.value : "");
-    if (span) span.textContent = label + " • ⚡" + cost;
+    if (span) span.textContent = type === "image" ? "Generate image" : "Generate video";
   }
   function updateGenBtn() { setGenBtnLabel("idle"); }
 
@@ -811,6 +896,22 @@
     toast(wasDemo ? "Demo render complete — saved to Gallery." : "Render complete — saved to Gallery.", "ok");
   }
 
+  function showRequestSuccess(req) {
+    var res = $("#genResult");
+    if (res) {
+      res.style.display = "block";
+      res.innerHTML = '<div class="panel req-success">' +
+        "<h3>✓ Request sent!</h3>" +
+        '<p class="desc">Your Request ID: <span class="mono">' + esc(req.id) + "</span></p>" +
+        '<p class="desc">The studio will create your ' + esc(req.type) +
+          " and post the result under My Requests — usually within ~10 minutes.</p>" +
+        '<a class="btn" href="requests.html">Track my request →</a>' +
+        "</div>";
+      if (typeof res.scrollIntoView === "function") res.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    toast("Request sent! Your Request ID: " + req.id, "ok");
+  }
+
   function initCreate() {
     initOptGroups();
     initUpload();
@@ -822,46 +923,206 @@
     if (cfg0.defaultModel) selByTab.video = cfg0.defaultModel;
     var h = (location.hash || "").replace("#", "");
     setMediaType(h === "image" ? "image" : (h === "audio" ? "audio" : "video"), true);
+    var nameEl = $("#f_name");
+    if (nameEl && !nameEl.value) {
+      var profName = loadProfile().name;
+      if (profName) nameEl.value = profName;
+    }
     var form = $("#createForm");
     if (!form) return;
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
       var type = currentType();
+      if (type === "audio") { toast("Audio is coming soon — pick Video or Image.", "err"); return; }
+      var nameFld = $("#f_name"), waFld = $("#f_whatsapp");
+      var name = nameFld ? nameFld.value.trim() : "";
+      var whatsapp = waFld ? waFld.value.trim() : "";
       var prompt = $("#f_prompt").value.trim();
-      if (prompt.length < 8) { toast("Describe your shot in a little more detail first.", "err"); $("#f_prompt").focus(); return; }
-      var modelName = $("#f_model").value || selByTab.video;
-      var job = {
-        prompt: prompt,
-        model: modelName,
-        ratio: $("#f_ratio").value || "16:9",
-        duration: type === "image" ? "" : ($("#f_duration").value || "10s"),
-        type: type,
-        cost: modelCost(modelName)
-      };
-      var cfg = loadCfg();
-      if (!isLive() && getCredits() < job.cost) {
-        toast("Not enough demo credits (need ⚡" + job.cost + "). Reset them in Settings.", "err");
+      if (!name) { toast("Please enter your name.", "err"); if (nameFld) nameFld.focus(); return; }
+      if (whatsapp.replace(/\D/g, "").length < 10) {
+        toast("Please enter a valid WhatsApp number (at least 10 digits).", "err");
+        if (waFld) waFld.focus();
         return;
       }
+      if (!prompt) { toast("Describe what you want to create first.", "err"); $("#f_prompt").focus(); return; }
+      var req = {
+        id: genRequestId(),
+        name: name,
+        whatsapp: whatsapp,
+        type: type,
+        model: $("#f_model").value || selByTab[type] || "",
+        ratio: $("#f_ratio").value || "16:9",
+        duration: type === "image" ? "" : ($("#f_duration").value || "10s"),
+        prompt: prompt,
+        ts: Date.now()
+      };
+      submitRequest(req);
+      addRequest(req);
+      var prog = $("#genProgress");
+      if (prog) prog.style.display = "none";
       setGenBtnLabel("busy");
-      $("#genProgress").style.display = "block";
-      $("#genResult").style.display = "none";
-      $("#genLog").innerHTML = "";
-      setBar(2);
-      $all(".step").forEach(function (s, i) {
-        s.classList.remove("active", "done", "error");
-        var d = $(".step-dot", s);
-        if (d) d.textContent = String(i + 1);
-      });
-      logLine("Job: " + job.model + " · " + job.ratio + (job.duration ? " · " + job.duration : "") + " · " + job.type, "inf");
-      if (isLive()) realGenerate(cfg, job);
-      else {
-        if (!cfg.demoMode && !(cfg.apiKey || cfg.orgId)) {
-          logLine("No API configured — running in demo mode. Add keys in Settings for real renders.", "inf");
-        }
-        demoGenerate(job);
-      }
+      showRequestSuccess(req);
+      setTimeout(function () { location.href = "requests.html"; }, 1200);
     });
+  }
+
+  /* ---------- my requests: live status via sheet JSONP ---------- */
+  var statusMap = {}; // RequestID -> {status, type, resultUrl, updated}
+  var pendingResultsCb = null;
+  var resultsWired = false;
+
+  function wireResultsJsonp() {
+    if (resultsWired) return;
+    resultsWired = true;
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+    window.google.visualization.Query.setResponse = function (data) {
+      var cb = pendingResultsCb;
+      pendingResultsCb = null;
+      if (cb) { try { cb(data); } catch (e) {} }
+    };
+  }
+  function pollResults(cb) {
+    wireResultsJsonp();
+    pendingResultsCb = cb;
+    function fail() {
+      if (pendingResultsCb === cb) { pendingResultsCb = null; try { cb(null); } catch (e) {} }
+    }
+    var s = document.createElement("script");
+    s.src = RESULTS_GVIZ_URL + "&_=" + Date.now();
+    s.onerror = fail;
+    (document.head || document.documentElement).appendChild(s);
+    setTimeout(fail, 20000);
+  }
+  function parseResults(data) {
+    var map = {};
+    try {
+      var rows = (data && data.table && data.table.rows) || [];
+      rows.forEach(function (r) {
+        var c = (r && r.c) || [];
+        function val(i) {
+          var cell = c[i];
+          if (!cell) return "";
+          if (cell.v != null) return String(cell.v);
+          if (cell.f != null) return String(cell.f);
+          return "";
+        }
+        var id = val(0).trim();
+        if (!id || id === "RequestID") return; // skip header row
+        map[id] = { status: val(1).trim(), type: val(2).trim(), resultUrl: val(3).trim(), updated: val(4).trim() };
+      });
+    } catch (e) {}
+    return map;
+  }
+
+  function initRequests() {
+    var list = $("#reqList"), empty = $("#reqEmpty");
+    if (!list || !empty) return;
+    var lastSig = null;
+
+    function statusFor(req) {
+      var s = statusMap[req.id];
+      if (!s || !s.status) return { key: "queued", label: "Queued" };
+      var low = s.status.toLowerCase();
+      if (low === "ready" || low === "completed" || low === "done" || low === "success") return { key: "ready", label: "Ready" };
+      if (low === "generating" || low === "running" || low === "processing" || low === "in progress") return { key: "generating", label: "Generating" };
+      if (low === "failed" || low === "error" || low === "cancelled") return { key: "failed", label: "Failed" };
+      if (low === "queued" || low === "pending") return { key: "queued", label: "Queued" };
+      return { key: "other", label: s.status };
+    }
+    function chipFor(st) {
+      if (st.key === "ready") return '<span class="badge done">Ready</span>';
+      if (st.key === "generating") return '<span class="badge running pulsing">Generating</span>';
+      if (st.key === "failed") return '<span class="badge failed">Failed</span>';
+      if (st.key === "queued") return '<span class="badge sample">Queued</span>';
+      return '<span class="badge sample">' + esc(st.label) + "</span>";
+    }
+    function reqType(req) {
+      var s = statusMap[req.id];
+      return String(req.type || (s && s.type) || "").toLowerCase();
+    }
+    function resultBlock(req) {
+      var s = statusMap[req.id];
+      if (statusFor(req).key !== "ready" || !s || !s.resultUrl) return "";
+      var url = s.resultUrl;
+      var t = reqType(req);
+      var isVideo = t === "video" || (!t && /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url));
+      var media = isVideo
+        ? '<video controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
+        : '<img src="' + esc(url) + '" alt="Your generated result">';
+      return '<div class="req-result">' + media +
+        '<div class="req-actions">' +
+          '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">Download</a>' +
+          '<a class="btn btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">Open</a>' +
+        "</div></div>";
+    }
+    function render() {
+      var reqs = loadRequests();
+      if (!reqs.length) { list.innerHTML = ""; empty.style.display = "block"; lastSig = null; return; }
+      empty.style.display = "none";
+      var sig = reqs.map(function (r) {
+        var s = statusMap[r.id];
+        return r.id + "|" + (s ? s.status + "|" + s.resultUrl + "|" + s.type : "");
+      }).join(";");
+      if (sig === lastSig) return; // nothing changed — don't disturb playing media
+      lastSig = sig;
+      list.innerHTML = reqs.map(function (r) {
+        var meta = ['<span class="type-tag">' + esc(reqType(r) || "request") + "</span>"];
+        if (r.model) meta.push("<span>" + esc(r.model) + "</span>");
+        if (r.ratio) meta.push("<span>" + esc(r.ratio) + "</span>");
+        if (r.duration) meta.push("<span>" + esc(r.duration) + "</span>");
+        if (r.ts) meta.push("<span>" + esc(timeAgo(r.ts)) + "</span>");
+        return '<article class="req-card">' +
+          '<div class="req-head"><span class="req-id mono" data-copy="' + esc(r.id) + '" title="Click to copy">' + esc(r.id) + "</span>" + chipFor(statusFor(r)) + "</div>" +
+          '<p class="gen-prompt">' + esc(r.prompt || "Tracked request") + "</p>" +
+          '<div class="act-meta">' + meta.join('<span class="dot-sep">•</span>') + "</div>" +
+          resultBlock(r) +
+          "</article>";
+      }).join("");
+      $all(".req-id", list).forEach(function (el) {
+        el.addEventListener("click", function () { copyText(el.getAttribute("data-copy")); });
+      });
+    }
+    function refresh() {
+      pollResults(function (data) {
+        if (data) {
+          var map = parseResults(data);
+          Object.keys(map).forEach(function (k) { statusMap[k] = map[k]; });
+          // backfill stored requests with what the sheet knows (type, status, result)
+          var reqs = loadRequests(), changed = false;
+          reqs.forEach(function (r) {
+            var s = statusMap[r.id];
+            if (!s) return;
+            if (!r.type && s.type) { r.type = s.type.toLowerCase(); changed = true; }
+            if (s.status && r.status !== s.status) { r.status = s.status; changed = true; }
+            if (s.resultUrl && r.resultUrl !== s.resultUrl) { r.resultUrl = s.resultUrl; changed = true; }
+          });
+          if (changed) persistRequests(reqs);
+        }
+        render();
+      });
+    }
+    var trackBtn = $("#trackBtn"), trackInput = $("#trackInput");
+    function doTrack() {
+      var id = trackInput ? trackInput.value.trim() : "";
+      if (!id) { toast("Paste a Request ID first.", "err"); if (trackInput) trackInput.focus(); return; }
+      var exists = loadRequests().some(function (r) { return r.id.toLowerCase() === id.toLowerCase(); });
+      if (exists) { toast("You're already tracking " + id + ".", "info"); return; }
+      addRequest({ id: id, ts: Date.now() });
+      if (trackInput) trackInput.value = "";
+      render();
+      refresh();
+      toast("Now tracking " + id + ".", "ok");
+    }
+    if (trackBtn) trackBtn.addEventListener("click", doTrack);
+    if (trackInput) trackInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); doTrack(); }
+    });
+
+    render();
+    refresh();
+    setInterval(refresh, 30000);
   }
 
   /* ---------- workflows page ---------- */
@@ -1054,7 +1315,11 @@
   }
 
   /* test hook (harmless in production) */
-  window.__studioTest = { setCredits: setCredits, getCredits: getCredits, toast: toast };
+  window.__studioTest = {
+    setCredits: setCredits, getCredits: getCredits, toast: toast,
+    loadRequests: loadRequests, genRequestId: genRequestId,
+    parseResults: parseResults, pollResults: pollResults
+  };
 
   /* ---------- boot ---------- */
   document.addEventListener("DOMContentLoaded", function () {
@@ -1067,6 +1332,7 @@
     else if (page === "gallery") initGallery();
     else if (page === "create") initCreate();
     else if (page === "activity") initActivity();
+    else if (page === "requests") initRequests();
     else if (page === "workflows") initWorkflows();
     else if (page === "settings") initSettings();
   });
