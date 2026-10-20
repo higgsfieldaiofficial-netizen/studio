@@ -623,3 +623,9 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
 .demo-video-card .thumb{padding:0;cursor:pointer}
 .demo-video-card .thumb video{width:100%;height:100%;object-fit:cover;display:block}
 .demo-video-card.playing .play{display:none}
+
+/* home featured renders strip */
+.featured-strip{display:flex;gap:16px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}
+.featured-card{flex:0 0 260px;scroll-snap-align:start}
+.featured-card .gen-body{padding:10px 12px 12px}
+.featured-card .gen-prompt{min-height:0;-webkit-line-clamp:1}

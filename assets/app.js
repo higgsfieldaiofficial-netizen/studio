@@ -137,10 +137,14 @@
     { src: "assets/demos/demo1.mp4", title: "Golden-hour property showcase", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 2 * 864e5 },
     { src: "assets/demos/demo2.mp4", title: "Lifestyle product clip", model: "Kling 2.0", type: "video", createdAt: Date.now() - 3 * 864e5 },
     { src: "assets/demos/demo3.mp4", title: "Yogabars product ad — AI UGC", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 5 * 864e5 },
-    { src: "assets/demos/demo4.mp4", title: "Test render", model: "Kling 2.0", type: "video", createdAt: Date.now() - 6 * 864e5 }
+    { src: "assets/demos/demo4.mp4", title: "Test render", model: "Kling 2.0", type: "video", createdAt: Date.now() - 6 * 864e5 },
+    { src: "assets/demos/demo5.mp4", title: "Cinematic club entry — AI music video", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 1 * 864e5 },
+    { src: "assets/demos/demo6.mp4", title: "Mountain road drive — Defender film", model: "Kling 3.0", type: "video", createdAt: Date.now() - 2 * 864e5 },
+    { src: "assets/demos/demo7.mp4", title: "Beach sunset drive", model: "Hailuo 2.3", type: "video", createdAt: Date.now() - 3 * 864e5 },
+    { src: "assets/demos/demo8.mp4", title: "The Dare — horror short", model: "Seedance 2.5", type: "video", createdAt: Date.now() - 4 * 864e5 }
   ];
-  function demoVideoCard(d) {
-    return '<article class="gen-card demo-video-card">' +
+  function demoVideoCard(d, compact) {
+    return '<article class="gen-card demo-video-card' + (compact ? " featured-card" : "") + '">' +
       '<div class="thumb"><video src="' + esc(d.src) + '" muted loop playsinline preload="metadata"></video>' +
       '<span class="play">' + PLAY_SVG + "</span></div>" +
       '<div class="gen-body"><p class="gen-prompt">' + esc(d.title) + "</p>" +
@@ -308,6 +312,16 @@
     } else {
       row.innerHTML = "";
       empty.style.display = "block";
+    }
+    // featured renders strip (bundled demo clips)
+    var strip = $("#featuredStrip");
+    if (strip) {
+      var featuredSrcs = ["assets/demos/demo1.mp4", "assets/demos/demo5.mp4", "assets/demos/demo6.mp4", "assets/demos/demo8.mp4"];
+      var featured = featuredSrcs.map(function (s) {
+        return BUNDLED_DEMOS.filter(function (d) { return d.src === s; })[0];
+      }).filter(Boolean);
+      strip.innerHTML = featured.map(function (d) { return demoVideoCard(d, true); }).join("");
+      bindDemoVideos(strip);
     }
   }
 
