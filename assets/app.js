@@ -86,7 +86,7 @@
   function genRequestId() {
     var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", rnd = "";
     for (var i = 0; i < 3; i++) rnd += chars.charAt(Math.floor(Math.random() * chars.length));
-    return "AVX-" + Date.now().toString(36).toUpperCase() + rnd;
+    return "REQ-" + Date.now().toString(36).toUpperCase() + rnd;
   }
   function submitRequest(req) {
     var params = new URLSearchParams();
@@ -188,12 +188,12 @@
   }
   function loadProfile() {
     var c = loadCfg();
-    return c.profile || { name: "", color: "#2b7fff" };
+    return c.profile || { name: "Creator", color: "#2b7fff" };
   }
   function updateAvatar() {
     var p = loadProfile();
     $all("#topAvatar").forEach(function (a) {
-      a.textContent = ((p.name || "A").charAt(0) || "A").toUpperCase();
+      a.textContent = ((p.name || "Creator").charAt(0) || "C").toUpperCase();
       a.style.background = p.color || "#2b7fff";
     });
   }
@@ -1062,6 +1062,71 @@
           '<a class="btn btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">Open</a>' +
         "</div></div>";
     }
+    /* ----- pending-card loading experience (spinner + stage + ETA + bar) ----- */
+    var LOAD_STAGES = {
+      queued: ["In queue — waiting for a free slot", "Your creation is in the queue", "Almost at the front of the queue"],
+      generating: ["Generating your creation…", "Working on the details…", "Rendering…", "Polishing the final result…"]
+    };
+    function expectedSecs(req) {
+      return reqType(req) === "image" ? 300 : 600; // image ~5 min, video ~10 min
+    }
+    function fmtElapsed(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      var m = Math.floor(sec / 60), s = sec % 60;
+      return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+    }
+    function loaderState(req, stKey) {
+      var expected = expectedSecs(req);
+      var elapsed = Math.max(0, (Date.now() - (req.ts || Date.now())) / 1000);
+      var frac = Math.min(elapsed / expected, 0.95); // never show a full bar while pending
+      var stages = LOAD_STAGES[stKey] || LOAD_STAGES.queued;
+      var remaining = expected - elapsed;
+      return {
+        pct: Math.floor(frac * 100),
+        width: (frac * 100).toFixed(1),
+        elapsedTxt: fmtElapsed(elapsed) + " elapsed",
+        eta: remaining > 0
+          ? "approx ~" + Math.ceil(remaining / 60) + " min remaining"
+          : "a little longer than usual — hang tight",
+        stage: stages[Math.floor(elapsed / 4) % stages.length] // rotate stage every ~4s
+      };
+    }
+    function loadingBlock(req, st) {
+      if (st.key !== "queued" && st.key !== "generating") return "";
+      var ls = loaderState(req, st.key);
+      return '<div class="req-loading" data-loading="' + esc(req.id) + '">' +
+        '<div class="req-load-top"><span class="spinner" aria-hidden="true"></span>' +
+        '<span class="req-stage" data-stage>' + esc(ls.stage) + "</span></div>" +
+        '<div class="req-bar"><div class="req-bar-fill" data-fill style="width:' + ls.width + '%"></div></div>' +
+        '<div class="req-load-meta">' +
+          '<span class="req-pct" data-pct>' + ls.pct + "%</span>" +
+          '<span class="req-elapsed" data-elapsed>' + esc(ls.elapsedTxt) + "</span>" +
+          '<span class="req-eta" data-eta>' + esc(ls.eta) + "</span>" +
+        "</div></div>";
+    }
+    // 1s ticker: updates ONLY the loader elements in place — cards are never
+    // re-rendered here, so a playing result video is never disturbed.
+    function tickLoaders() {
+      $all("[data-loading]", list).forEach(function (block) {
+        var id = block.getAttribute("data-loading");
+        var req = null;
+        loadRequests().forEach(function (r) { if (r.id === id) req = r; });
+        if (!req) return;
+        var st = statusFor(req);
+        if (st.key !== "queued" && st.key !== "generating") return;
+        var ls = loaderState(req, st.key);
+        var stageEl = block.querySelector("[data-stage]");
+        if (stageEl && stageEl.textContent !== ls.stage) stageEl.textContent = ls.stage;
+        var fillEl = block.querySelector("[data-fill]");
+        if (fillEl) fillEl.style.width = ls.width + "%";
+        var pctEl = block.querySelector("[data-pct]");
+        if (pctEl) pctEl.textContent = ls.pct + "%";
+        var elEl = block.querySelector("[data-elapsed]");
+        if (elEl) elEl.textContent = ls.elapsedTxt;
+        var etaEl = block.querySelector("[data-eta]");
+        if (etaEl) etaEl.textContent = ls.eta;
+      });
+    }
     function render() {
       var reqs = loadRequests();
       if (!reqs.length) { list.innerHTML = ""; empty.style.display = "block"; lastSig = null; return; }
@@ -1073,15 +1138,17 @@
       if (sig === lastSig) return; // nothing changed — don't disturb playing media
       lastSig = sig;
       list.innerHTML = reqs.map(function (r) {
+        var st = statusFor(r);
         var meta = ['<span class="type-tag">' + esc(reqType(r) || "request") + "</span>"];
         if (r.model) meta.push("<span>" + esc(r.model) + "</span>");
         if (r.ratio) meta.push("<span>" + esc(r.ratio) + "</span>");
         if (r.duration) meta.push("<span>" + esc(r.duration) + "</span>");
         if (r.ts) meta.push("<span>" + esc(timeAgo(r.ts)) + "</span>");
         return '<article class="req-card">' +
-          '<div class="req-head"><span class="req-id mono" data-copy="' + esc(r.id) + '" title="Click to copy">' + esc(r.id) + "</span>" + chipFor(statusFor(r)) + "</div>" +
+          '<div class="req-head"><span class="req-id mono" data-copy="' + esc(r.id) + '" title="Click to copy">' + esc(r.id) + "</span>" + chipFor(st) + "</div>" +
           '<p class="gen-prompt">' + esc(r.prompt || "Tracked request") + "</p>" +
           '<div class="act-meta">' + meta.join('<span class="dot-sep">•</span>') + "</div>" +
+          loadingBlock(r, st) +
           resultBlock(r) +
           "</article>";
       }).join("");
@@ -1128,6 +1195,7 @@
     render();
     refresh();
     setInterval(refresh, 30000);
+    setInterval(tickLoaders, 1000);
   }
 
   /* ---------- workflows page ---------- */

@@ -661,7 +661,30 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
 @keyframes badgePulse{0%,100%{opacity:1}50%{opacity:.4}}
 .req-success{border-color:rgba(52,211,153,.45)}
 .req-success .mono{color:var(--text);font-weight:700}
+/* request loading state (queued / generating) */
+.req-loading{
+  margin-top:16px;background:var(--panel-2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:14px 16px;
+}
+.req-load-top{display:flex;align-items:center;gap:10px}
+.spinner{
+  width:18px;height:18px;flex:none;border-radius:50%;
+  border:2.5px solid var(--accent-soft);border-top-color:var(--accent);
+  animation:reqSpin .8s linear infinite;
+}
+@keyframes reqSpin{to{transform:rotate(360deg)}}
+.req-stage{font-weight:600;font-size:13.5px;color:var(--text)}
+.req-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:12px;overflow:hidden}
+.req-bar-fill{
+  height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  transition:width 1s linear;
+}
+.req-load-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:12.5px;color:var(--muted)}
+.req-pct{color:var(--accent-2);font-weight:700}
+.req-eta{margin-left:auto}
 @media (max-width:640px){
   .req-track-row{flex-direction:column}
   .req-head .badge{margin-left:0}
+  .req-eta{margin-left:0}
 }
