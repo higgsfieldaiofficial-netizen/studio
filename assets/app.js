@@ -1056,9 +1056,10 @@
       uploadRefPhoto(photo).then(function (url) {
         req.refImageUrl = url;
         finish();
-      }).catch(function () {
+      }).catch(function (err) {
         finish();
         toast("Photo upload failed — sending your request without the photo", "err");
+        alert("PHOTO UPLOAD ERROR: " + String(err && err.message || err));
       });
     });
   }
