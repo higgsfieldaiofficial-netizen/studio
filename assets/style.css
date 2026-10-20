@@ -649,6 +649,10 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
   width:100%;max-height:480px;object-fit:contain;display:block;
   border-radius:12px;border:1px solid var(--border-strong);background:#000;
 }
+.req-result iframe{
+  width:100%;aspect-ratio:16/9;display:block;
+  border:0;border-radius:12px;background:#000;
+}
 .req-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center}
 .req-note{font-size:13px;color:var(--muted);margin-top:20px;text-align:center}
 .req-track-row{display:flex;gap:10px}

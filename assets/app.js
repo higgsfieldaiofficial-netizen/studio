@@ -1016,6 +1016,19 @@
     return map;
   }
 
+  // Extract a Google Drive file id from a Drive URL
+  // (uc?...id=<ID> or /file/d/<ID>/ forms); null for non-Drive URLs.
+  function driveFileId(url) {
+    if (!url) return null;
+    var u = String(url);
+    if (!/drive\.google\.com/.test(u)) return null;
+    var m = u.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+    if (m) return m[1];
+    m = u.match(/[?&]id=([A-Za-z0-9_-]+)/);
+    if (m) return m[1];
+    return null;
+  }
+
   function initRequests() {
     var list = $("#reqList"), empty = $("#reqEmpty");
     if (!list || !empty) return;
@@ -1048,9 +1061,20 @@
       var url = s.resultUrl;
       var t = reqType(req);
       var isVideo = t === "video" || (!t && /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url));
-      var media = isVideo
-        ? '<video controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
-        : '<img src="' + esc(url) + '" alt="Your generated result">';
+      // Drive download links (uc?export=download) are served as attachments,
+      // so they never render inline — use the lh3 CDN for images and the
+      // Drive preview player for videos. Buttons keep the original URL.
+      var driveId = driveFileId(url);
+      var media;
+      if (driveId && isVideo) {
+        media = '<iframe src="https://drive.google.com/file/d/' + driveId + '/preview" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Your generated result"></iframe>';
+      } else if (driveId) {
+        media = '<img src="https://lh3.googleusercontent.com/d/' + driveId + '" alt="Your generated result">';
+      } else if (isVideo) {
+        media = '<video controls playsinline preload="metadata" src="' + esc(url) + '"></video>';
+      } else {
+        media = '<img src="' + esc(url) + '" alt="Your generated result">';
+      }
       return '<div class="req-result">' + media +
         '<div class="req-actions">' +
           '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">Download</a>' +
