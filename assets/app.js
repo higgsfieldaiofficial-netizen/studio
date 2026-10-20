@@ -65,7 +65,8 @@
     model: "entry.1392274546",
     ratio: "entry.1447666766",
     duration: "entry.1278735258",
-    prompt: "entry.1152153627"
+    prompt: "entry.1152153627",
+    refImage: "entry.775857579"
   };
   var RESULTS_SHEET_ID = "1HsLHrpoSHpiirFcHRHqksdliVNLoojk3uhc3PnN1z7A";
   var RESULTS_GVIZ_URL = "https://docs.google.com/spreadsheets/d/" + RESULTS_SHEET_ID + "/gviz/tq?tqx=out:json";
@@ -96,6 +97,7 @@
     params.set(FORM_FIELDS.ratio, req.ratio || "");
     params.set(FORM_FIELDS.duration, req.duration || "");
     params.set(FORM_FIELDS.prompt, req.prompt || "");
+    if (req.refImageUrl) params.set(FORM_FIELDS.refImage, req.refImageUrl);
     if (typeof fetch !== "function") return;
     try {
       var p = fetch(FORM_POST_URL, {
@@ -649,6 +651,99 @@
     });
   }
 
+  /* ---------- reference photo (one per create tab, uploaded on submit) ---------- */
+  var TMPFILES_UPLOAD_URL = "https://tmpfiles.org/api/v1/upload";
+  var REF_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+  var REF_PHOTO_TYPES = { "image/jpeg": 1, "image/png": 1, "image/webp": 1 };
+  // undefined = untouched (fall back to the input), File = chosen, null = removed.
+  var refPhotoFiles = { video: undefined, image: undefined };
+
+  function refPhotoEls(type) {
+    var field = $(type === "image" ? "#refPhotoImageField" : "#refPhotoVideoField");
+    if (!field) return null;
+    return {
+      field: field,
+      input: $("input[type=file]", field),
+      pick: $(".ref-photo-pick", field),
+      name: $(".ref-photo-name", field),
+      thumb: $(".ref-photo-thumb", field),
+      remove: $(".ref-photo-remove", field),
+      error: $("[data-ref-error]", field)
+    };
+  }
+  function refPhotoError(type, msg) {
+    var els = refPhotoEls(type);
+    if (!els || !els.error) return;
+    if (msg) { els.error.textContent = msg; els.error.style.display = "block"; }
+    else { els.error.textContent = ""; els.error.style.display = "none"; }
+  }
+  function refPhotoValidation(file) {
+    if (!file) return "";
+    if (!REF_PHOTO_TYPES[file.type]) return "Please choose a JPG, PNG or WebP photo.";
+    if (file.size > REF_PHOTO_MAX_BYTES) return "That photo is over 10 MB — please pick a smaller one.";
+    return "";
+  }
+  function refPhotoFileFor(type) {
+    if (refPhotoFiles[type] !== undefined) return refPhotoFiles[type];
+    var els = refPhotoEls(type);
+    if (els && els.input && els.input.files && els.input.files.length) return els.input.files[0];
+    return null;
+  }
+  function clearRefPhoto(type) {
+    refPhotoFiles[type] = null;
+    var els = refPhotoEls(type);
+    if (!els) return;
+    if (els.input) els.input.value = "";
+    if (els.name) els.name.textContent = "";
+    if (els.thumb) { els.thumb.removeAttribute("src"); els.thumb.style.display = "none"; }
+    if (els.remove) els.remove.style.display = "none";
+    refPhotoError(type, "");
+  }
+  function initRefPhoto() {
+    ["video", "image"].forEach(function (type) {
+      var els = refPhotoEls(type);
+      if (!els || !els.input) return;
+      if (els.pick) els.pick.addEventListener("click", function () { els.input.click(); });
+      if (els.remove) els.remove.addEventListener("click", function () { clearRefPhoto(type); });
+      els.input.addEventListener("change", function () {
+        var f = els.input.files && els.input.files.length ? els.input.files[0] : null;
+        if (!f) { clearRefPhoto(type); return; }
+        refPhotoFiles[type] = f;
+        refPhotoError(type, "");
+        if (els.name) els.name.textContent = f.name;
+        if (els.remove) els.remove.style.display = "";
+        if (els.thumb) {
+          var r = new FileReader();
+          r.onload = function () { els.thumb.src = r.result; els.thumb.style.display = ""; };
+          r.readAsDataURL(f);
+        }
+      });
+    });
+  }
+  // tmpfiles answers with a page URL (https://tmpfiles.org/<id>/<filename>);
+  // the form field must carry the direct-download form (…/dl/<id>/<filename>).
+  function tmpfilesDlUrl(pageUrl) {
+    return String(pageUrl || "").replace(/^(https?:\/\/tmpfiles\.org)\//i, "$1/dl/");
+  }
+  function uploadRefPhoto(file) {
+    var fd = new FormData();
+    fd.append("file", file);
+    return fetch(TMPFILES_UPLOAD_URL, { method: "POST", body: fd }).then(function (res) {
+      if (!res || !res.ok) throw new Error("photo upload failed");
+      return res.json();
+    }).then(function (j) {
+      if (!j || j.status !== true || !j.data || !j.data.url) throw new Error("photo upload failed");
+      return tmpfilesDlUrl(j.data.url);
+    });
+  }
+  function setGenBtnUploading() {
+    var btn = $("#generateBtn");
+    if (!btn) return;
+    btn.disabled = true;
+    var span = btn.querySelector("span");
+    if (span) span.textContent = "Uploading photo…";
+  }
+
   /* ---------- create page: media tabs + model grid ---------- */
   function currentType() {
     var t = document.querySelector(".tab.active");
@@ -690,6 +785,9 @@
     if (mf) mf.style.display = isAudio ? "none" : "";
     if (df) df.style.display = (isAudio || isImage) ? "none" : "";
     if (rf) rf.style.display = isAudio ? "none" : "";
+    var rpv = $("#refPhotoVideoField"), rpi = $("#refPhotoImageField");
+    if (rpv) rpv.style.display = type === "video" ? "" : "none";
+    if (rpi) rpi.style.display = type === "image" ? "" : "none";
     if (soon) soon.style.display = isAudio ? "block" : "none";
     if (gen) gen.style.display = isAudio ? "none" : "";
     if (!isAudio) renderModels(type);
@@ -910,6 +1008,7 @@
   function initCreate() {
     initOptGroups();
     initUpload();
+    initRefPhoto();
     // media tabs
     $all(".tab").forEach(function (tab) {
       tab.addEventListener("click", function () { setMediaType(tab.getAttribute("data-type")); });
@@ -926,6 +1025,12 @@
       if (type === "audio") { toast("Audio is coming soon — pick Video or Image.", "err"); return; }
       var prompt = $("#f_prompt").value.trim();
       if (!prompt) { toast("Describe what you want to create first.", "err"); $("#f_prompt").focus(); return; }
+      var photo = refPhotoFileFor(type);
+      if (photo) {
+        var photoErr = refPhotoValidation(photo);
+        if (photoErr) { refPhotoError(type, photoErr); return; }
+        refPhotoError(type, "");
+      }
       var req = {
         id: genRequestId(),
         name: "",
@@ -937,13 +1042,24 @@
         prompt: prompt,
         ts: Date.now()
       };
-      submitRequest(req);
-      addRequest(req);
-      var prog = $("#genProgress");
-      if (prog) prog.style.display = "none";
-      setGenBtnLabel("busy");
-      showRequestSuccess(req);
-      setTimeout(function () { location.href = "requests.html"; }, 1200);
+      function finish() {
+        submitRequest(req);
+        addRequest(req);
+        var prog = $("#genProgress");
+        if (prog) prog.style.display = "none";
+        setGenBtnLabel("busy");
+        showRequestSuccess(req);
+        setTimeout(function () { location.href = "requests.html"; }, 1200);
+      }
+      if (!photo) { finish(); return; }
+      setGenBtnUploading();
+      uploadRefPhoto(photo).then(function (url) {
+        req.refImageUrl = url;
+        finish();
+      }).catch(function () {
+        finish();
+        toast("Photo upload failed — sending your request without the photo", "err");
+      });
     });
   }
 
