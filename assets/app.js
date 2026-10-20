@@ -1036,30 +1036,77 @@
       var s = statusMap[req.id];
       return String(req.type || (s && s.type) || "").toLowerCase();
     }
+    // One canonical media URL per result, used for inline playback, the
+    // Open link and the download fetch alike:
+    // - same-origin / GitHub Pages URLs: used exactly as stored.
+    // - Drive files: raw bytes with no Google UI and no account picker —
+    //   videos stream from the usercontent download host, images render
+    //   and fetch via the lh3 CDN. (Drive /file/d/ and uc? URLs are never
+    //   linked directly: the preview page shows Google chrome and the
+    //   download page pops a Google account chooser.)
+    function mediaUrlFor(url, isVideo) {
+      var driveId = driveFileId(url);
+      if (!driveId) return url;
+      if (isVideo) return "https://drive.usercontent.google.com/download?id=" + driveId + "&export=download&authuser=0";
+      return "https://lh3.googleusercontent.com/d/" + driveId;
+    }
+    function resultExt(url, isVideo) {
+      var m = String(url).match(/\.([a-z0-9]{3,4})(?:\?|#|$)/i);
+      if (isVideo) return (m && /^(mp4|webm|mov|m4v)$/i.test(m[1])) ? m[1].toLowerCase() : "mp4";
+      return (m && /^(jpe?g|png|webp|gif)$/i.test(m[1])) ? m[1].toLowerCase() : "jpg";
+    }
+    // Save the file straight from the browser: fetch the bytes, wrap them
+    // in a blob and click a temporary download anchor — the browser never
+    // navigates to a Google page. Falls back to opening the raw file in a
+    // new tab if the fetch is blocked.
+    function downloadResult(btn) {
+      var url = btn.getAttribute("data-dl-url");
+      var name = btn.getAttribute("data-dl-name") || "download";
+      if (!url || btn.getAttribute("data-dl-busy") === "1") return;
+      var original = btn.innerHTML;
+      btn.setAttribute("data-dl-busy", "1");
+      btn.disabled = true;
+      btn.textContent = "Downloading…";
+      function restore() {
+        btn.removeAttribute("data-dl-busy");
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+      fetch(url).then(function (res) {
+        if (!res || !res.ok) throw new Error("download failed");
+        return res.blob();
+      }).then(function (blob) {
+        var objUrl = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = objUrl;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        if (a.parentNode) a.parentNode.removeChild(a);
+        setTimeout(function () { try { URL.revokeObjectURL(objUrl); } catch (e) {} }, 4000);
+        restore();
+      }).catch(function () {
+        window.open(url, "_blank", "noopener");
+        toast("Download opened in a new tab", "info");
+        restore();
+      });
+    }
     function resultBlock(req) {
       var s = statusMap[req.id];
       if (statusFor(req).key !== "ready" || !s || !s.resultUrl) return "";
       var url = s.resultUrl;
       var t = reqType(req);
       var isVideo = t === "video" || (!t && /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url));
-      // Drive download links (uc?export=download) are served as attachments,
-      // so they never render inline — use the lh3 CDN for images and the
-      // Drive preview player for videos. Buttons keep the original URL.
-      var driveId = driveFileId(url);
-      var media;
-      if (driveId && isVideo) {
-        media = '<iframe src="https://drive.google.com/file/d/' + driveId + '/preview" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Your generated result"></iframe>';
-      } else if (driveId) {
-        media = '<img src="https://lh3.googleusercontent.com/d/' + driveId + '" alt="Your generated result">';
-      } else if (isVideo) {
-        media = '<video controls playsinline preload="metadata" src="' + esc(url) + '"></video>';
-      } else {
-        media = '<img src="' + esc(url) + '" alt="Your generated result">';
-      }
+      var mediaUrl = mediaUrlFor(url, isVideo);
+      // Always a native player — never an embedded Drive preview.
+      var media = isVideo
+        ? '<video controls playsinline preload="metadata" src="' + esc(mediaUrl) + '"></video>'
+        : '<img src="' + esc(mediaUrl) + '" alt="Your generated result">';
+      var fileName = req.id + "." + resultExt(url, isVideo);
       return '<div class="req-result">' + media +
         '<div class="req-actions">' +
-          '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener">Download</a>' +
-          '<a class="btn btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">Open</a>' +
+          '<button type="button" class="btn" data-dl-url="' + esc(mediaUrl) + '" data-dl-name="' + esc(fileName) + '">Download</button>' +
+          '<a class="btn btn-ghost" href="' + esc(mediaUrl) + '" target="_blank" rel="noopener">Open</a>' +
         "</div></div>";
     }
     /* ----- pending-card loading experience (spinner + stage + ETA + bar) ----- */
@@ -1154,6 +1201,12 @@
       }).join("");
       $all(".req-id", list).forEach(function (el) {
         el.addEventListener("click", function () { copyText(el.getAttribute("data-copy")); });
+      });
+      $all("[data-dl-url]", list).forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          downloadResult(btn);
+        });
       });
     }
     function refresh() {
