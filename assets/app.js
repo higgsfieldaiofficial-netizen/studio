@@ -732,7 +732,7 @@
       if (!res || !res.ok) throw new Error("photo upload failed");
       return res.json();
     }).then(function (j) {
-      if (!j || j.status !== true || !j.data || !j.data.url) throw new Error("photo upload failed");
+      if (!j || (j.status !== true && j.status !== "success") || !j.data || !j.data.url) throw new Error("photo upload failed");
       return tmpfilesDlUrl(j.data.url);
     });
   }
