@@ -83,6 +83,32 @@
             </div>
           </div>
 
+          <div class="field" id="refPhotoVideoField">
+            <label>Reference photo <span style="color:var(--muted-2);font-weight:400">(optional)</span></label>
+            <div class="ref-photo" data-ref-photo="video">
+              <input type="file" id="refPhotoVideo" accept="image/jpeg,image/png,image/webp">
+              <button type="button" class="btn btn-ghost ref-photo-pick">Choose photo</button>
+              <span class="ref-photo-name"></span>
+              <img class="ref-photo-thumb" alt="Reference photo preview" style="display:none">
+              <button type="button" class="btn btn-ghost ref-photo-remove" style="display:none">Remove</button>
+            </div>
+            <p class="hint">Your photo becomes the video</p>
+            <p class="field-error" data-ref-error style="display:none"></p>
+          </div>
+
+          <div class="field" id="refPhotoImageField" style="display:none">
+            <label>Reference photo <span style="color:var(--muted-2);font-weight:400">(optional)</span></label>
+            <div class="ref-photo" data-ref-photo="image">
+              <input type="file" id="refPhotoImage" accept="image/jpeg,image/png,image/webp">
+              <button type="button" class="btn btn-ghost ref-photo-pick">Choose photo</button>
+              <span class="ref-photo-name"></span>
+              <img class="ref-photo-thumb" alt="Reference photo preview" style="display:none">
+              <button type="button" class="btn btn-ghost ref-photo-remove" style="display:none">Remove</button>
+            </div>
+            <p class="hint">We will use this photo as your result</p>
+            <p class="field-error" data-ref-error style="display:none"></p>
+          </div>
+
           <div class="field" id="refField">
             <label>Reference images <span style="color:var(--muted-2);font-weight:400">(optional)</span></label>
             <div class="drop" id="dropZone">
