@@ -68,9 +68,9 @@
     prompt: "entry.1152153627",
     refImage: "entry.775857579"
   };
-  var RESULTS_SHEET_ID = "1HsLHrpoSHpiirFcHRHqksdliVNLoojk3uhc3PnN1z7A";
-  var RESULTS_GVIZ_URL = "https://docs.google.com/spreadsheets/d/" + RESULTS_SHEET_ID + "/gviz/tq?tqx=out:json";
-  // Results sheet columns: RequestID | Status | Type | ResultURL | Updated
+  // Request statuses live in status.json on this same site (no external sheet):
+  // { "<RequestID>": { status, type, resultUrl, updated }, ... }
+  var STATUS_JSON_URL = "status.json";
 
   function loadRequests() {
     try { return JSON.parse(localStorage.getItem(REQ_KEY)) || []; } catch (e) { return []; }
@@ -1063,51 +1063,34 @@
     });
   }
 
-  /* ---------- my requests: live status via sheet JSONP ---------- */
+  /* ---------- my requests: live status via status.json ---------- */
   var statusMap = {}; // RequestID -> {status, type, resultUrl, updated}
-  var pendingResultsCb = null;
-  var resultsWired = false;
 
-  function wireResultsJsonp() {
-    if (resultsWired) return;
-    resultsWired = true;
-    window.google = window.google || {};
-    window.google.visualization = window.google.visualization || {};
-    window.google.visualization.Query = window.google.visualization.Query || {};
-    window.google.visualization.Query.setResponse = function (data) {
-      var cb = pendingResultsCb;
-      pendingResultsCb = null;
-      if (cb) { try { cb(data); } catch (e) {} }
-    };
-  }
   function pollResults(cb) {
-    wireResultsJsonp();
-    pendingResultsCb = cb;
-    function fail() {
-      if (pendingResultsCb === cb) { pendingResultsCb = null; try { cb(null); } catch (e) {} }
-    }
-    var s = document.createElement("script");
-    s.src = RESULTS_GVIZ_URL + "&_=" + Date.now();
-    s.onerror = fail;
-    (document.head || document.documentElement).appendChild(s);
-    setTimeout(fail, 20000);
+    var done = false;
+    function finish(data) { if (!done) { done = true; try { cb(data); } catch (e) {} } }
+    try {
+      fetch(STATUS_JSON_URL + "?_=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+        .then(function (j) { finish(j); })
+        .catch(function () { finish(null); });
+    } catch (e) { finish(null); }
+    setTimeout(function () { finish(null); }, 20000);
   }
   function parseResults(data) {
+    // status.json shape: { "<RequestID>": {status, type, resultUrl, updated} }
     var map = {};
     try {
-      var rows = (data && data.table && data.table.rows) || [];
-      rows.forEach(function (r) {
-        var c = (r && r.c) || [];
-        function val(i) {
-          var cell = c[i];
-          if (!cell) return "";
-          if (cell.v != null) return String(cell.v);
-          if (cell.f != null) return String(cell.f);
-          return "";
-        }
-        var id = val(0).trim();
-        if (!id || id === "RequestID") return; // skip header row
-        map[id] = { status: val(1).trim(), type: val(2).trim(), resultUrl: val(3).trim(), updated: val(4).trim() };
+      if (!data || typeof data !== "object") return map;
+      Object.keys(data).forEach(function (id) {
+        var s = data[id] || {};
+        function str(v) { return v == null ? "" : String(v); }
+        map[id] = {
+          status: str(s.status).trim(),
+          type: str(s.type).trim(),
+          resultUrl: str(s.resultUrl || s.resultURL).trim(),
+          updated: str(s.updated).trim()
+        };
       });
     } catch (e) {}
     return map;
