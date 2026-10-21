@@ -56,17 +56,17 @@
   }
   function persistWfs(wfs) { localStorage.setItem(WF_KEY, JSON.stringify(wfs)); }
 
-  /* ---------- real request system (form intake + sheet results) ---------- */
+  /* ---------- real request system (form intake + status.json results) ---------- */
   var REQ_KEY = "studio_requests";
-  var FORM_POST_URL = "https://docs.google.com/forms/d/e/1FAIpQLScmvKniKtt2whkRwoFmq1TbapBrBKhdyCzITzBulWvF7-Pgmw/formResponse";
+  var FORM_POST_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfflGL2hLI1wACiCiDogLQLX_xjHKtwmKcauZiDc6NeCbtZOQ/formResponse";
   var FORM_FIELDS = {
-    id: "entry.16647374",
-    type: "entry.1898962646",
-    model: "entry.1392274546",
-    ratio: "entry.1447666766",
-    duration: "entry.1278735258",
-    prompt: "entry.1152153627",
-    refImage: "entry.775857579"
+    id: "entry.26252261",
+    type: "entry.1270305009",
+    model: "entry.888648135",
+    ratio: "entry.161969381",
+    duration: "entry.631291483",
+    prompt: "entry.741135044",
+    refImage: "entry.84835546"
   };
   // Request statuses live in status.json on this same site (no external sheet):
   // { "<RequestID>": { status, type, resultUrl, updated }, ... }
