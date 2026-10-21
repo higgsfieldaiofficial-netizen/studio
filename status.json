@@ -72,9 +72,9 @@
   "updated": "2026-10-20 15:03 IST"
  },
  "REQ-REBUILDTEST": {
-  "status": "Generating",
+  "status": "Ready",
   "type": "image",
-  "resultUrl": "",
-  "updated": "2026-10-21 23:08 IST"
+  "resultUrl": "https://higgsfieldaiofficial-netizen.github.io/studio/results/REQ-REBUILDTEST.jpg",
+  "updated": "2026-10-21 23:14 IST"
  }
 }
